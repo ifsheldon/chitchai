@@ -1,9 +1,10 @@
-use dioxus::prelude::*;
-
 //! # Components
 //!
 //! ## Reference:
 //! 1. https://www.langui.dev/components/prompt-containers#component-2
+//!
+
+use dioxus::prelude::*;
 
 pub fn PromptMessageContainer(cx: Scope) -> Element {
     // TODO: fix top round corners are white when dark mode is enabled
