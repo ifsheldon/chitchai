@@ -583,10 +583,6 @@ video {
   margin-right: 0.5rem;
 }
 
-.mt-1 {
-  margin-top: 0.25rem;
-}
-
 .mt-2 {
   margin-top: 0.5rem;
 }
@@ -605,10 +601,6 @@ video {
 
 .h-8 {
   height: 2rem;
-}
-
-.h-\[97vh\] {
-  height: 97vh;
 }
 
 .h-\[100vh\] {
@@ -647,20 +639,12 @@ video {
   flex-direction: column;
 }
 
-.flex-col-reverse {
-  flex-direction: column-reverse;
-}
-
 .items-start {
   align-items: flex-start;
 }
 
 .items-center {
   align-items: center;
-}
-
-.gap-2 {
-  gap: 0.5rem;
 }
 
 .space-y-6 > :not([hidden]) ~ :not([hidden]) {
@@ -883,10 +867,6 @@ video {
 
   .sm\:max-w-md {
     max-width: 28rem;
-  }
-
-  .sm\:flex-row {
-    flex-direction: row;
   }
 
   .sm\:text-base {
