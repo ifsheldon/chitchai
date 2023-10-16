@@ -14,3 +14,4 @@ transprompt = { git = "https://github.com/ifsheldon/transprompt.git", default-fe
 web-sys = { version = "0.3", features = ["Storage"] }
 console_log = "1.0"
 log = "0.4"
+gloo-storage = "0.3"
