@@ -2,3 +2,4 @@
 
 pub mod agents;
 pub mod components;
+pub mod prompt_engineer;
