@@ -3,6 +3,7 @@
 use dioxus::prelude::*;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
 use transprompt::utils::llm::openai::ChatMsg;
+use log::Level;
 
 use chitchai::components::PromptMessageContainer;
 use chitchai::prompt_engineer::prompt_templates::ASSISTANT_SYS_PROMPT;
@@ -67,5 +68,6 @@ fn App(cx: Scope) -> Element {
 }
 
 fn main() {
+    console_log::init_with_level(Level::Debug).unwrap();
     dioxus_web::launch(App);
 }
