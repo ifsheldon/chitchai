@@ -3,64 +3,12 @@
 use dioxus::prelude::*;
 use gloo_storage::{LocalStorage, Storage};
 use log::Level;
-use serde::{Deserialize, Serialize};
-use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
-use transprompt::utils::llm::openai::ChatMsg;
 
 use chitchai::components::PromptMessageContainer;
 use chitchai::prompt_engineer::prompt_templates::ASSISTANT_SYS_PROMPT;
+use chitchai::utils::{assistant_msg, get_or_init_local_storage, sys_msg, user_msg};
 
 const NONE: Option<&str> = None;
-
-pub fn sys_msg(string: impl Into<String>) -> ChatMsg {
-    ChatMsg {
-        msg: ChatCompletionRequestMessage {
-            role: Role::System,
-            content: Some(string.into()),
-            name: None,
-            function_call: None,
-        },
-        metadata: None,
-    }
-}
-
-pub fn user_msg(string: impl Into<String>, name: Option<impl Into<String>>) -> ChatMsg {
-    ChatMsg {
-        msg: ChatCompletionRequestMessage {
-            role: Role::User,
-            content: Some(string.into()),
-            name: name.map(|n| n.into()),
-            function_call: None,
-        },
-        metadata: None,
-    }
-}
-
-pub fn assistant_msg(string: impl Into<String>, name: Option<impl Into<String>>) -> ChatMsg {
-    ChatMsg {
-        msg: ChatCompletionRequestMessage {
-            role: Role::Assistant,
-            content: Some(string.into()),
-            name: name.map(|n| n.into()),
-            function_call: None,
-        },
-        metadata: None,
-    }
-}
-
-fn get_or_init_local_storage<T, F>(key: &str, default: F) -> T
-    where T: for<'de> Deserialize<'de> + Serialize + Clone, F: FnOnce() -> T
-{
-    match LocalStorage::get::<T>(key) {
-        Ok(value) => value,
-        Err(e) => {
-            log::error!("error: {}", e);
-            let default = default();
-            LocalStorage::set(key, default.clone()).unwrap();
-            default
-        }
-    }
-}
 
 fn App(cx: Scope) -> Element {
     let run_count = get_or_init_local_storage("chitchai", || 0_usize);
