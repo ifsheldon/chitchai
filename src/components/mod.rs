@@ -5,30 +5,24 @@
 //!
 
 use dioxus::prelude::*;
+use transprompt::async_openai::types::Role;
+use transprompt::utils::llm::openai::ChatMsg;
 
-pub fn PromptMessageContainer(cx: Scope) -> Element {
+#[inline_props]
+pub fn PromptMessageContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
     // TODO: fix top round corners are white when dark mode is enabled
     render! {
         div {
             class: "flex h-[100vh] w-full flex-col",
             div {
                 class: "flex-1 space-y-6 overflow-y-auto rounded-xl bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
-                 PromptMessage {
-                    msg: "Explain quantum computing in simple terms".to_string(),
-                    left: true,
-                }
-                PromptMessage {
-                    msg: "Certainly! Quantum computing is a new type of computing that relies on the principles of quantum physics. Traditional computers, like the one you might be using right now, use bits to store and process information. These bits can represent either a 0 or a 1. In contrast, quantum computers use quantum bits, or qubits. Unlike bits, qubits can represent not only a 0 or a 1 but also a superposition of both states simultaneously. This means that a qubit can be in multiple states at once, which allows quantum computers to perform certain calculations much faster and more efficiently".to_string(),
-                    left: false,
-                }
-                PromptMessage {
-                    msg: "What are three great applications of quantum computing?".to_string(),
-                    left: true,
-                }
-                PromptMessage {
-                    msg: "Three great applications of quantum computing are: Optimization of complex problems, Drug Discovery and Cryptography.".to_string(),
-                    left: false,
-                }
+                history.iter().map(
+                    |msg| rsx!{
+                        MessageCard {
+                            chat_msg: msg.clone()
+                        }
+                    }
+                )
                 PromptMessageInput {}
             }
         }
@@ -37,9 +31,40 @@ pub fn PromptMessageContainer(cx: Scope) -> Element {
 
 
 #[inline_props]
-pub fn PromptMessage(cx: Scope, msg: String, left: bool) -> Element {
-    if *left {
-        render! {
+pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
+    let msg = chat_msg.msg.content.as_ref().unwrap();
+    match chat_msg.msg.role {
+        Role::System => render! {
+                div {
+                    class: "flex flex-row-reverse items-start",
+                    img {
+                        class: "ml-2 h-8 w-8 rounded-full",
+                        src: "https://dummyimage.com/128x128/354ea1/ffffff&text=S"
+                    }
+                    div {
+                        class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
+                        p {
+                            "{msg}"
+                        }
+                    }
+                }
+            },
+        Role::User => render! {
+            div {
+                class: "flex flex-row-reverse items-start",
+                img {
+                    class: "ml-2 h-8 w-8 rounded-full",
+                    src: "https://dummyimage.com/128x128/354ea1/ffffff&text=U"
+                }
+                div {
+                    class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
+                    p {
+                        "{msg}"
+                    }
+                }
+            }
+        },
+        Role::Assistant => render! {
             div {
                 class: "flex items-start",
                 img {
@@ -53,23 +78,8 @@ pub fn PromptMessage(cx: Scope, msg: String, left: bool) -> Element {
                     }
                 }
             }
-        }
-    } else {
-        render! {
-            div {
-                class: "flex flex-row-reverse items-start",
-                img {
-                    class: "ml-2 h-8 w-8 rounded-full",
-                    src: "https://dummyimage.com/128x128/354ea1/ffffff&text=G"
-                }
-                div {
-                    class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
-                    p {
-                        "{msg}"
-                    }
-                }
-            }
-        }
+        },
+        Role::Function => unreachable!(),
     }
 }
 
