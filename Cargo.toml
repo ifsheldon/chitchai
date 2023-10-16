@@ -10,3 +10,5 @@ dioxus = "~0.4"
 dioxus-web = "~0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+transprompt = { git = "https://github.com/ifsheldon/transprompt.git", default-features = false, features = ["wasm"] }
+web-sys = { version = "0.3", features = ["Storage"] }
