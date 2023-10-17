@@ -5,11 +5,13 @@
 //!
 
 use std::rc::Rc;
+use std::time::Duration;
 
 use dioxus::prelude::*;
 use futures_util::stream::StreamExt;
 use transprompt::async_openai::types::Role;
 use transprompt::utils::llm::openai::ChatMsg;
+use async_std::task::sleep;
 
 use crate::utils::{assistant_msg, user_msg};
 
@@ -17,16 +19,26 @@ struct Request(String);
 
 #[inline_props]
 pub fn PromptMessageContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
-    let history: &UseRef<Vec<ChatMsg>> = use_ref(cx, || history.clone());
+    let history = use_ref(cx, || history.clone());
+    let request_processing = use_state(cx, || false);
     let request_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<Request>| {
         let history = history.to_owned();
+        let request_processing = request_processing.to_owned();
         async move {
             while let Some(Request(request)) = rx.next().await {
                 log::info!("request_handler {}", request);
                 history.with_mut(|h| {
                     h.push(user_msg(request.as_str(), None::<&str>));
-                    h.push(assistant_msg(request, None::<&str>));
+                    h.push(assistant_msg("", None::<&str>));
                 });
+                request_processing.set(true);
+                for c in request.chars() {
+                    history.with_mut(|h| {
+                        h.last_mut().unwrap().msg.content.as_mut().unwrap().push(c);
+                    });
+                    sleep(Duration::from_millis(300)).await
+                }
+                request_processing.set(false);
             }
             log::error!("request_handler exited");
         }
@@ -44,7 +56,9 @@ pub fn PromptMessageContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
                         }
                     }
                 )
-                PromptMessageInput {}
+                PromptMessageInput {
+                    disable_submit: *request_processing.get()
+                }
             }
         }
     }
@@ -104,8 +118,8 @@ pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
     }
 }
 
-
-pub fn PromptMessageInput(cx: Scope) -> Element {
+#[inline_props]
+pub fn PromptMessageInput(cx: Scope, disable_submit: bool) -> Element {
     const TEXTAREA_ID: &str = "chat-input";
     let request_sender: &Coroutine<Request> = use_coroutine_handle(cx).unwrap();
     let input_value = use_state(cx, || {
@@ -160,6 +174,7 @@ pub fn PromptMessageInput(cx: Scope) -> Element {
                 }
                 button {
                     r#type: "submit",
+                    disabled: *disable_submit,
                     class: "absolute bottom-2 right-2.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:text-base",
                     "Send",
                     span {
