@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
 use transprompt::utils::llm::openai::ChatMsg;
 
+pub mod customization;
 pub mod storage;
 
 pub fn sys_msg(string: impl Into<String>) -> ChatMsg {

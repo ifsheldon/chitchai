@@ -2,10 +2,12 @@ use gloo_storage::{LocalStorage, Storage};
 use serde::{Deserialize, Serialize};
 
 use crate::app::APP_NAME;
+use crate::utils::customization::Customization;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct StoredStates {
     pub run_count: usize,
+    pub customization: Customization,
 }
 
 impl StoredStates {
@@ -35,11 +37,6 @@ fn get_or_init_local_storage<T, F>(key: &str, default: F) -> T
     }
 }
 
-impl Default for StoredStates {
-    fn default() -> Self {
-        Self { run_count: 0 }
-    }
-}
 
 impl Drop for StoredStates {
     fn drop(&mut self) {
