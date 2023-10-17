@@ -116,6 +116,7 @@ pub fn PromptMessageInput(cx: Scope) -> Element {
         };
         Rc::new(empty_form)
     });
+    // TODO: try not to use js to clear textarea
     let create_eval = use_eval(cx);
     let clear_textarea = use_future(cx, (), |_| {
         let create_eval = create_eval.to_owned();
