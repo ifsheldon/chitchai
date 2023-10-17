@@ -4,20 +4,40 @@
 //! 1. https://www.langui.dev/components/prompt-containers#component-2
 //!
 
+use std::rc::Rc;
+
 use dioxus::prelude::*;
+use futures_util::stream::StreamExt;
 use transprompt::async_openai::types::Role;
 use transprompt::utils::llm::openai::ChatMsg;
-use std::rc::Rc;
+
+use crate::utils::{assistant_msg, user_msg};
+
+struct Request(String);
 
 #[inline_props]
 pub fn PromptMessageContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
+    let history: &UseRef<Vec<ChatMsg>> = use_ref(cx, || history.clone());
+    let request_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<Request>| {
+        let history = history.to_owned();
+        async move {
+            while let Some(Request(request)) = rx.next().await {
+                log::info!("request_handler {}", request);
+                history.with_mut(|h| {
+                    h.push(user_msg(request.as_str(), None::<&str>));
+                    h.push(assistant_msg(request, None::<&str>));
+                });
+            }
+            log::error!("request_handler exited");
+        }
+    });
     // TODO: fix top round corners are white when dark mode is enabled
     render! {
         div {
             class: "flex h-[100vh] w-full flex-col",
             div {
                 class: "flex-1 space-y-6 overflow-y-auto rounded-xl bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
-                history.iter().map(
+                history.read().iter().map(
                     |msg| rsx!{
                         MessageCard {
                             chat_msg: msg.clone()
@@ -86,8 +106,9 @@ pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
 
 
 pub fn PromptMessageInput(cx: Scope) -> Element {
+    let request_sender: &Coroutine<Request> = use_coroutine_handle(cx).unwrap();
     let input_value = use_state(cx, || {
-        let empty_form = FormData{
+        let empty_form = FormData {
             value: String::new(),
             values: Default::default(),
             files: None,
@@ -101,6 +122,7 @@ pub fn PromptMessageInput(cx: Scope) -> Element {
             id: "chat-form",
             onsubmit: move |_| {
                 log::info!("onsubmit {}", &input_value.get().value);
+                request_sender.send(Request(input_value.get().value.clone()));
             },
             label {
                 r#for: "chat-input",
