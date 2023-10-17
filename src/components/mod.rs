@@ -7,6 +7,7 @@
 use dioxus::prelude::*;
 use transprompt::async_openai::types::Role;
 use transprompt::utils::llm::openai::ChatMsg;
+use std::rc::Rc;
 
 #[inline_props]
 pub fn PromptMessageContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
@@ -85,9 +86,22 @@ pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
 
 
 pub fn PromptMessageInput(cx: Scope) -> Element {
+    let input_value = use_state(cx, || {
+        let empty_form = FormData{
+            value: String::new(),
+            values: Default::default(),
+            files: None,
+        };
+        Rc::new(empty_form)
+    });
+
     render! {
         form {
             class: "mt-2",
+            id: "chat-form",
+            onsubmit: move |_| {
+                log::info!("onsubmit {}", &input_value.get().value);
+            },
             label {
                 r#for: "chat-input",
                 class: "sr-only",
@@ -96,7 +110,9 @@ pub fn PromptMessageInput(cx: Scope) -> Element {
             div {
                 class: "relative",
                 textarea {
+                    oninput: move |event| input_value.set(event.data),
                     id: "chat-input",
+                    form: "chat-form",
                     class: "block w-full resize-none rounded-xl border-none bg-slate-200 p-4 pl-10 pr-20 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-400 dark:focus:ring-blue-600 sm:text-base",
                     placeholder: "Enter your prompt",
                     rows: "2",
