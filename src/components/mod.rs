@@ -106,6 +106,7 @@ pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
 
 
 pub fn PromptMessageInput(cx: Scope) -> Element {
+    const TEXTAREA_ID: &str = "chat-input";
     let request_sender: &Coroutine<Request> = use_coroutine_handle(cx).unwrap();
     let input_value = use_state(cx, || {
         let empty_form = FormData {
@@ -115,6 +116,21 @@ pub fn PromptMessageInput(cx: Scope) -> Element {
         };
         Rc::new(empty_form)
     });
+    let create_eval = use_eval(cx);
+    let clear_textarea = use_future(cx, (), |_| {
+        let create_eval = create_eval.to_owned();
+        let clear_js = format!("document.getElementById('{}').value = '';", TEXTAREA_ID);
+        async move {
+            let result = create_eval(clear_js.as_str())
+                .unwrap()
+                .join()
+                .await;
+            match result {
+                Ok(_) => log::info!("clear_textarea"),
+                Err(e) => log::error!("clear_textarea error: {:?}", e),
+            }
+        }
+    });
 
     render! {
         form {
@@ -123,9 +139,10 @@ pub fn PromptMessageInput(cx: Scope) -> Element {
             onsubmit: move |_| {
                 log::info!("onsubmit {}", &input_value.get().value);
                 request_sender.send(Request(input_value.get().value.clone()));
+                clear_textarea.restart();
             },
             label {
-                r#for: "chat-input",
+                r#for: "{TEXTAREA_ID}",
                 class: "sr-only",
                 "Enter your prompt"
             }
