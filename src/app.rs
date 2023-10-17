@@ -15,11 +15,12 @@ pub struct Tick(pub usize);
 
 
 pub fn App(cx: Scope) -> Element {
-    // configure share states
     let mut stored_states = StoredStates::get_or_init();
     stored_states.run_count += 1;
     stored_states.save();
+    // configure share states
     use_shared_state_provider(cx, || stored_states);
+    use_shared_state_provider(cx, || Tick(0));
     let global = use_shared_state::<StoredStates>(cx).unwrap();
     let tick = use_shared_state::<Tick>(cx).unwrap();
     // configure timer
