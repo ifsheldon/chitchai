@@ -1,7 +1,9 @@
-use gloo_storage::{LocalStorage, Storage};
+use gloo_storage::Storage;
 use serde::{Deserialize, Serialize};
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
 use transprompt::utils::llm::openai::ChatMsg;
+
+pub mod storage;
 
 pub fn sys_msg(string: impl Into<String>) -> ChatMsg {
     ChatMsg {
@@ -36,19 +38,5 @@ pub fn assistant_msg(string: impl Into<String>, name: Option<impl Into<String>>)
             function_call: None,
         },
         metadata: None,
-    }
-}
-
-pub fn get_or_init_local_storage<T, F>(key: &str, default: F) -> T
-    where T: for<'de> Deserialize<'de> + Serialize + Clone, F: FnOnce() -> T
-{
-    match LocalStorage::get::<T>(key) {
-        Ok(value) => value,
-        Err(e) => {
-            log::error!("error: {}", e);
-            let default = default();
-            LocalStorage::set(key, default.clone()).unwrap();
-            default
-        }
     }
 }
