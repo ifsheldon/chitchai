@@ -1,3 +1,6 @@
+use std::time::Duration;
+
+use async_std::task::sleep;
 use dioxus::prelude::*;
 
 use crate::components::PromptMessageContainer;
@@ -8,10 +11,28 @@ use crate::utils::storage::StoredStates;
 pub const APP_NAME: &str = "chitchai";
 const NONE: Option<&str> = None;
 
+pub struct Tick(pub usize);
+
 
 pub fn App(cx: Scope) -> Element {
-    use_shared_state_provider(cx, StoredStates::get_or_init);
+    // configure share states
+    let mut stored_states = StoredStates::get_or_init();
+    stored_states.run_count += 1;
+    stored_states.save();
+    use_shared_state_provider(cx, || stored_states);
     let global = use_shared_state::<StoredStates>(cx).unwrap();
+    let tick = use_shared_state::<Tick>(cx).unwrap();
+    // configure timer
+    let timer = use_coroutine(cx, |_: UnboundedReceiver<()>| {
+        let tick = tick.to_owned();
+        async move {
+            loop {
+                sleep(Duration::from_millis(500)).await;
+                let mut tick = tick.write();
+                tick.0 = tick.0.wrapping_add(1);
+            }
+        }
+    });
     let history = Vec::from([
         sys_msg(ASSISTANT_SYS_PROMPT),
         sys_msg(format!("This is your {} time running ChitChai!", global.read().run_count)),
