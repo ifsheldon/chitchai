@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 use transprompt::async_openai::Client;
 use transprompt::async_openai::config::AzureConfig;
 
-use crate::components::PromptMessageContainer;
+use crate::components::ChatContainer;
 use crate::prompt_engineer::prompt_templates::ASSISTANT_SYS_PROMPT;
 use crate::utils::auth::Auth;
 use crate::utils::storage::StoredStates;
@@ -26,7 +26,7 @@ pub fn App(cx: Scope) -> Element {
         sys_msg(ASSISTANT_SYS_PROMPT),
     ]);
     render! {
-        PromptMessageContainer {
+        ChatContainer {
             history: init_history,
         }
     }
