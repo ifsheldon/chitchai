@@ -10,24 +10,32 @@ use std::time::Duration;
 use async_std::task::sleep;
 use dioxus::prelude::*;
 use futures_util::stream::StreamExt;
-use transprompt::async_openai::types::Role;
+use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
 use transprompt::utils::llm::openai::ChatMsg;
 
+use crate::app::GPTClient;
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
 
 struct Request(String);
 
+
+#[inline]
+fn map_chat_messages(chat_msgs: &Vec<ChatMsg>) -> Vec<ChatCompletionRequestMessage> {
+    chat_msgs.iter().map(|msg| msg.msg.clone()).collect()
+}
+
 async fn handle_request(mut rx: UnboundedReceiver<Request>,
                         history: UseRef<Vec<ChatMsg>>,
+                        gpt_client: UseSharedState<GPTClient>,
                         processing_flag: UseState<bool>) {
     while let Some(Request(request)) = rx.next().await {
+        processing_flag.set(true);
         log::info!("request_handler {}", request);
         history.with_mut(|h| {
             h.push(user_msg(request.as_str(), None::<&str>));
             h.push(assistant_msg("", None::<&str>));
         });
-        processing_flag.set(true);
         for c in request.chars() {
             history.with_mut(|h| {
                 h.last_mut().unwrap().msg.content.as_mut().unwrap().push(c);
@@ -42,9 +50,10 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
 #[inline_props]
 pub fn PromptMessageContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
     let history = use_ref(cx, || history.clone());
+    let gpt_client = use_shared_state::<GPTClient>(cx).unwrap();
     let request_processing = use_state(cx, || false);
     let request_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<Request>|
-        handle_request(rx, history.to_owned(), request_processing.to_owned()),
+        handle_request(rx, history.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
     );
     // TODO: fix top round corners are white when dark mode is enabled
     render! {
