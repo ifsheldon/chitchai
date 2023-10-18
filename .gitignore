@@ -3,3 +3,4 @@
 /node_modules
 Cargo.lock
 /dist
+/src/utils/temp_auth.json
