@@ -4,9 +4,9 @@ use transprompt::async_openai::config::AzureConfig;
 
 use crate::components::PromptMessageContainer;
 use crate::prompt_engineer::prompt_templates::ASSISTANT_SYS_PROMPT;
-use crate::utils::{assistant_msg, sys_msg, user_msg};
 use crate::utils::auth::Auth;
 use crate::utils::storage::StoredStates;
+use crate::utils::sys_msg;
 
 pub const APP_NAME: &str = "chitchai";
 const NONE: Option<&str> = None;
@@ -24,16 +24,6 @@ pub fn App(cx: Scope) -> Element {
     let global = use_shared_state::<StoredStates>(cx).unwrap();
     let init_history = Vec::from([
         sys_msg(ASSISTANT_SYS_PROMPT),
-        user_msg("Explain quantum computing in simple terms", NONE),
-        assistant_msg(
-            "Certainly! Quantum computing is a new type of computing that relies on the principles of quantum physics. Traditional computers, like the one you might be using right now, use bits to store and process information. These bits can represent either a 0 or a 1. In contrast, quantum computers use quantum bits, or qubits. Unlike bits, qubits can represent not only a 0 or a 1 but also a superposition of both states simultaneously. This means that a qubit can be in multiple states at once, which allows quantum computers to perform certain calculations much faster and more efficiently",
-            NONE,
-        ),
-        user_msg("What are three great applications of quantum computing?", NONE),
-        assistant_msg(
-            "Three great applications of quantum computing are: Optimization of complex problems, Drug Discovery and Cryptography.",
-            NONE,
-        ),
     ]);
     render! {
         PromptMessageContainer {
