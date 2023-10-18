@@ -52,7 +52,8 @@ pub fn PromptMessageContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
     let history = use_ref(cx, || history.clone());
     let gpt_client = use_shared_state::<GPTClient>(cx).unwrap();
     let request_processing = use_state(cx, || false);
-    let request_handler = use_coroutine(cx, |mut rx: UnboundedReceiver<Request>|
+    // request handler
+    use_coroutine(cx, |rx|
         handle_request(rx, history.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
     );
     // TODO: fix top round corners are white when dark mode is enabled
@@ -136,7 +137,7 @@ pub fn PromptMessageInput(cx: Scope, disable_submit: bool) -> Element {
     let customization = &use_shared_state::<StoredStates>(cx).unwrap().read().customization;
     let tick = use_state(cx, || 0_usize);
     // configure timer
-    let timer = use_coroutine(cx, |_: UnboundedReceiver<()>| {
+    use_coroutine(cx, |_: UnboundedReceiver<()>| {
         let tick = tick.to_owned();
         async move {
             loop {
