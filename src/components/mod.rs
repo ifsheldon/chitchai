@@ -5,5 +5,7 @@
 //!
 
 pub use chat::*;
+pub use setting_sidebar::*;
 
 mod chat;
+mod setting_sidebar;
