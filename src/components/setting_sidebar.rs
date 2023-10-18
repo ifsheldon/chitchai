@@ -5,7 +5,7 @@ pub fn SettingSidebar(cx: Scope) -> Element {
         aside {
             class: "flex",
             div {
-                class: "relative h-screen w-60 overflow-y-auto border-l border-slate-300 bg-slate-50 py-8 dark:border-slate-700 dark:bg-slate-900 sm:w-64",
+                class: "relative h-screen w-full overflow-y-auto border-l border-slate-300 bg-slate-50 py-8 dark:border-slate-700 dark:bg-slate-900 sm:w-full",
                 div {
                     class: "mb-4 flex items-center gap-x-2 px-2 text-slate-800 dark:text-slate-200",
                     CloseSettingButton {},

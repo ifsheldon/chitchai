@@ -35,7 +35,7 @@ pub fn App(cx: Scope) -> Element {
                 }
             }
             div {
-                class: "w-64",
+                class: "w-1/6",
                 SettingSidebar  {}
             }
         }
