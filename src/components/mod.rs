@@ -13,7 +13,6 @@ use futures_util::stream::StreamExt;
 use transprompt::async_openai::types::Role;
 use transprompt::utils::llm::openai::ChatMsg;
 
-use crate::app::Tick;
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
 
@@ -126,7 +125,17 @@ pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
 pub fn PromptMessageInput(cx: Scope, disable_submit: bool) -> Element {
     const TEXTAREA_ID: &str = "chat-input";
     let customization = &use_shared_state::<StoredStates>(cx).unwrap().read().customization;
-    let tick = use_shared_state::<Tick>(cx).unwrap();
+    let tick = use_state(cx, || 0_usize);
+    // configure timer
+    let timer = use_coroutine(cx, |_: UnboundedReceiver<()>| {
+        let tick = tick.to_owned();
+        async move {
+            loop {
+                sleep(Duration::from_millis(500)).await;
+                tick.modify(|tick| tick.wrapping_add(1));
+            }
+        }
+    });
     let request_sender: &Coroutine<Request> = use_coroutine_handle(cx).unwrap();
     let input_value = use_state(cx, || {
         let empty_form = FormData {
@@ -183,7 +192,7 @@ pub fn PromptMessageInput(cx: Scope, disable_submit: bool) -> Element {
                     disabled: *disable_submit,
                     class: "absolute bottom-2 right-2.5 rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:text-base",
                     if *disable_submit {
-                        customization.waiting_icons[tick.read().0 % customization.waiting_icons.len()].as_str()
+                        customization.waiting_icons[*tick.get() % customization.waiting_icons.len()].as_str()
                     } else {
                         "Send"
                     }
