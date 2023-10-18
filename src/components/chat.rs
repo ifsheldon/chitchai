@@ -69,12 +69,11 @@ pub fn ChatContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
     use_coroutine(cx, |rx|
         handle_request(rx, history.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
     );
-    // TODO: fix top round corners are white when dark mode is enabled
     render! {
         div {
             class: "flex h-[100vh] w-full flex-col",
             div {
-                class: "flex-1 space-y-6 overflow-y-auto rounded-xl bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
+                class: "flex-1 space-y-6 overflow-y-auto bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
                 history.read().iter().map(
                     |msg| rsx!{
                         MessageCard {
