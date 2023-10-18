@@ -10,7 +10,7 @@ use std::time::Duration;
 use async_std::task::sleep;
 use dioxus::prelude::*;
 use futures_util::stream::StreamExt;
-use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
+use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs, Role};
 use transprompt::utils::llm::openai::ChatMsg;
 
 use crate::app::GPTClient;
@@ -32,15 +32,35 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
     while let Some(Request(request)) = rx.next().await {
         processing_flag.set(true);
         log::info!("request_handler {}", request);
-        history.with_mut(|h| {
-            h.push(user_msg(request.as_str(), None::<&str>));
-            h.push(assistant_msg("", None::<&str>));
-        });
-        for c in request.chars() {
-            history.with_mut(|h| {
-                h.last_mut().unwrap().msg.content.as_mut().unwrap().push(c);
-            });
-            sleep(Duration::from_millis(300)).await
+        let mut h = history.write();
+        h.push(user_msg(request.as_str(), None::<&str>));
+        let request_msgs = map_chat_messages(&h);
+        // push an empty message for UI to show a message card
+        h.push(assistant_msg("", None::<&str>));
+        drop(h);
+        let mut stream = gpt_client.read()
+            .chat()
+            .create_stream(CreateChatCompletionRequestArgs::default()
+                .model("gpt-3.5-turbo-0613")
+                .messages(request_msgs)
+                .build()
+                .expect("creating request failed")
+            )
+            .await
+            .expect("creating stream failed");
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                Ok(response) => {
+                    if response.choices.is_empty() {
+                        // azure openai service returns empty response on first call
+                        continue;
+                    }
+                    history.with_mut(|h|
+                        h.last_mut().unwrap().merge_delta(&response.choices[0].delta)
+                    );
+                }
+                Err(e) => log::error!("OpenAI Error: {:?}", e),
+            }
         }
         processing_flag.set(false);
     }
@@ -117,7 +137,7 @@ pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
                 class: "flex items-start",
                 img {
                     class: "mr-2 h-8 w-8 rounded-full",
-                    src: "https://dummyimage.com/128x128/363536/ffffff&text=J"
+                    src: "https://dummyimage.com/128x128/363536/ffffff&text=A"
                 }
                 div {
                     class: "flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl",
