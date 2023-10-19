@@ -218,7 +218,7 @@ pub fn ChatMessageInput(cx: Scope, disable_submit: bool) -> Element {
                 let input_value = &input_value.get().value;
                 if input_value.to_lowercase().starts_with("/setting") {
                     // FIXME: remove this command and add a button somewhere else to toggle sidebar
-                    app_event_handler.send(AppEvents::ToggleSidebar);
+                    app_event_handler.send(AppEvents::ToggleSettingsSidebar);
                 } else {
                     request_sender.send(Request(input_value.clone()));
                 }

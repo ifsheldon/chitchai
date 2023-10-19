@@ -16,7 +16,7 @@ pub type GPTClient = Client<AzureConfig>;
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AppEvents {
-    ToggleSidebar,
+    ToggleSettingsSidebar,
 }
 
 pub fn App(cx: Scope) -> Element {
@@ -37,7 +37,7 @@ pub fn App(cx: Scope) -> Element {
         async move {
             while let Some(event) = rx.next().await {
                 match event {
-                    AppEvents::ToggleSidebar => {
+                    AppEvents::ToggleSettingsSidebar => {
                         hide_sidebar.modify(|h| !(*h));
                     }
                     _ => log::warn!("Unknown event: {:?}", event),
