@@ -1,26 +1,67 @@
+use std::fmt::{Display, Formatter};
+
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
-#[derive(Debug, Clone, PartialEq)]
-enum GPTService {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GPTService {
     AzureOpenAI,
-    OpenAI(String),
+    OpenAI,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum OpenAIModel {
+    GPT35,
+    GPT35_16k,
+    GPT4,
+    GPT4_32k,
+}
+
+impl Display for OpenAIModel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            OpenAIModel::GPT35 => "gpt-3.5-turbo",
+            OpenAIModel::GPT35_16k => "gpt-3.5-turbo-16k",
+            OpenAIModel::GPT4 => "gpt-4",
+            OpenAIModel::GPT4_32k => "gpt-4-32k",
+        })
+    }
+}
+
+impl PartialEq<str> for OpenAIModel {
+    fn eq(&self, other: &str) -> bool {
+        let other = other.trim().to_lowercase();
+        match self {
+            OpenAIModel::GPT35 => other == "gpt-3.5-turbo",
+            OpenAIModel::GPT35_16k => other == "gpt-3.5-turbo-16k",
+            OpenAIModel::GPT4 => other == "gpt-4",
+            OpenAIModel::GPT4_32k => other == "gpt-4-32k",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 enum SettingEvent {
     ToggleEnableGroupChat,
     SelectService(Option<GPTService>),
+    SelectModel(Option<OpenAIModel>),
 }
 
 async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
                                enable_group_chat: UseState<bool>,
-                               gpt_service: UseState<Option<GPTService>>) {
+                               gpt_service: UseState<Option<GPTService>>,
+                               openai_model: UseState<Option<OpenAIModel>>) {
     while let Some(event) = rx.next().await {
         log::info!("setting_event_handler {:?}", event);
         match event {
             SettingEvent::ToggleEnableGroupChat => enable_group_chat.modify(|e| !*e),
-            SettingEvent::SelectService(service) => gpt_service.set(service),
+            SettingEvent::SelectService(service) => {
+                if !service.is_none() && service.unwrap().eq(&GPTService::AzureOpenAI) {
+                    openai_model.set(None);
+                }
+                gpt_service.set(service)
+            }
+            SettingEvent::SelectModel(selected) => openai_model.set(selected),
         }
     }
     log::error!("setting_event_handler exited");
@@ -30,9 +71,11 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
 pub fn SettingSidebar(cx: Scope) -> Element {
     let gpt_service = use_state(cx, || None::<GPTService>);
     let enable_group_chat = use_state(cx, || false);
+    let openai_model = use_state(cx, || None::<OpenAIModel>);
     use_coroutine(cx, |rx| setting_event_handler(rx,
                                                  enable_group_chat.to_owned(),
-                                                 gpt_service.to_owned()));
+                                                 gpt_service.to_owned(),
+                                                 openai_model.to_owned()));
     render! {
         aside {
             class: "flex",
@@ -49,7 +92,7 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                 SelectServiceSection {}
                 Toggle {}
                 AdvanceSettings {
-                    gpt_service: gpt_service
+                    gpt_service: **gpt_service
                 }
             }
         }
@@ -92,7 +135,9 @@ fn CloseSettingButton(cx: Scope) -> Element {
 }
 
 fn SelectServiceSection(cx: Scope) -> Element {
+    const NULL_OPTION: &str = "Select a GPT service";
     let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
+
     render! {
         div {
             class: "px-2 py-4 text-slate-800 dark:text-slate-200",
@@ -108,15 +153,15 @@ fn SelectServiceSection(cx: Scope) -> Element {
                     let value = select.data.value.as_str();
                     match value {
                         "AzureOpenAI" => setting_event_handler.send(SettingEvent::SelectService(Some(GPTService::AzureOpenAI))),
-                        "OpenAI" => setting_event_handler.send(SettingEvent::SelectService(Some(GPTService::OpenAI(String::new())))),
-                        "Select a GPT service" => setting_event_handler.send(SettingEvent::SelectService(None)),
+                        "OpenAI" => setting_event_handler.send(SettingEvent::SelectService(Some(GPTService::OpenAI))),
+                        NULL_OPTION => setting_event_handler.send(SettingEvent::SelectService(None)),
                         _ => log::error!("Unknown select-service value: {}", value),
                     }
                 },
                 class: "mt-2 w-full cursor-pointer rounded-lg border-r-4 border-transparent bg-slate-200 py-3 pl-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800",
                 option {
                     value: "",
-                    "Select a GPT service"
+                    "{NULL_OPTION}"
                 }
                 option {
                     value: "AzureOpenAI",
@@ -156,13 +201,13 @@ pub fn Toggle(cx: Scope) -> Element {
     }
 }
 
-#[derive(Props)]
-struct AdvanceSettingsProps<'a> {
+#[derive(Props, PartialEq)]
+struct AdvanceSettingsProps {
     #[props(! optional)]
-    gpt_service: &'a Option<GPTService>,
+    gpt_service: Option<GPTService>,
 }
 
-fn AdvanceSettings<'a>(cx: Scope<'a, AdvanceSettingsProps>) -> Element<'a> {
+fn AdvanceSettings(cx: Scope<AdvanceSettingsProps>) -> Element {
     render! {
         div {
             class: "my-4 border-t border-slate-300 px-2 py-4 text-slate-800 dark:border-slate-700 dark:text-slate-200",
@@ -177,7 +222,7 @@ fn AdvanceSettings<'a>(cx: Scope<'a, AdvanceSettingsProps>) -> Element<'a> {
                             gpt_service: gpt_service,
                         }
                     },
-                    GPTService::OpenAI(_) => render!{
+                    GPTService::OpenAI => render!{
                         SecretInputs {
                             gpt_service: gpt_service,
                         }
@@ -195,16 +240,16 @@ fn AdvanceSettings<'a>(cx: Scope<'a, AdvanceSettingsProps>) -> Element<'a> {
     }
 }
 
-#[derive(Props)]
-struct SecretInputsProps<'a> {
-    gpt_service: &'a GPTService,
+#[derive(Props, PartialEq)]
+struct SecretInputsProps {
+    gpt_service: GPTService,
 }
 
-fn SecretInputs<'a>(cx: Scope<'a, SecretInputsProps>) -> Element<'a> {
+fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
     const LABEL_STYLE: &str = "mb-2 mt-4 block px-2 text-sm font-medium";
     const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
     match cx.props.gpt_service {
-        GPTService::OpenAI(_) => render! {
+        GPTService::OpenAI => render! {
             div {
                 // API Key
                 label {
@@ -299,6 +344,14 @@ fn SecretInputs<'a>(cx: Scope<'a, SecretInputsProps>) -> Element<'a> {
 }
 
 fn SelectModel(cx: Scope) -> Element {
+    const ALL_MODELS: [OpenAIModel; 4] = [
+        OpenAIModel::GPT35,
+        OpenAIModel::GPT35_16k,
+        OpenAIModel::GPT4,
+        OpenAIModel::GPT4_32k,
+    ];
+    const NULL_OPTION: &str = "Select a model";
+    let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
     render! {
         div {
             label {
@@ -308,24 +361,29 @@ fn SelectModel(cx: Scope) -> Element {
             }
             select {
                 name: "select-model",
+                onchange: |change|{
+                    let model = change.data.value.as_str();
+                    if model == NULL_OPTION {
+                        setting_event_handler.send(SettingEvent::SelectModel(None));
+                    } else {
+                        match ALL_MODELS.iter().find(|m| (*m).eq(model)).cloned() {
+                            Some(m) => setting_event_handler.send(SettingEvent::SelectModel(Some(m))),
+                            None => log::error!("Unknown model: {}", model),
+                        }
+                    }
+                },
                 id: "select-model",
                 class: "block w-full cursor-pointer rounded-lg border-r-4 border-transparent bg-slate-200 py-3 pl-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600",
                 option {
-                    value: "gpt-3.5-turbo",
-                    "gpt-3.5-turbo"
+                    value: "",
+                    "{NULL_OPTION}"
                 }
-                option {
-                    value: "gpt-3.5-turbo-16k",
-                    "gpt-3.5-turbo-16k"
-                }
-                option {
-                    value: "gpt-4",
-                    "gpt-4"
-                }
-                option {
-                    value: "gpt-4-32k",
-                    "gpt-4-32k"
-                }
+                ALL_MODELS.iter().map(|model| rsx! {
+                    option {
+                        value: "{model}",
+                        "{model}"
+                    }
+                })
             }
         }
     }
