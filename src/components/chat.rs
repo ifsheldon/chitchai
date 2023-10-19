@@ -8,28 +8,37 @@ use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatC
 use transprompt::utils::llm::openai::ChatMsg;
 
 use crate::app::GPTClient;
+use crate::chat::{ChatManager, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
 
 struct Request(String);
 
+
 #[inline]
-fn map_chat_messages(chat_msgs: &Vec<ChatMsg>) -> Vec<ChatCompletionRequestMessage> {
-    chat_msgs.iter().map(|msg| msg.msg.clone()).collect()
+fn map_chat_messages(chat_msgs: &LinkedChatHistory,
+                     chat_manager: &UseSharedState<ChatManager>) -> Vec<ChatCompletionRequestMessage> {
+    let chat_manager = chat_manager.read();
+    chat_msgs
+        .iter()
+        .map(|msg_id| chat_manager.get(msg_id).unwrap().msg.clone())
+        .collect()
 }
 
+
 async fn handle_request(mut rx: UnboundedReceiver<Request>,
-                        history: UseRef<Vec<ChatMsg>>,
+                        chat_manager_ref: UseSharedState<ChatManager>,
+                        history: UseRef<LinkedChatHistory>,
                         gpt_client: UseSharedState<GPTClient>,
                         processing_flag: UseState<bool>) {
     while let Some(Request(request)) = rx.next().await {
         processing_flag.set(true);
         log::info!("request_handler {}", request);
         let mut h = history.write();
-        h.push(user_msg(request.as_str(), None::<&str>));
-        let request_msgs = map_chat_messages(&h);
+        h.push(chat_manager_ref.write().insert(user_msg(request.as_str(), None::<&str>)));
+        let request_msgs = map_chat_messages(&h, &chat_manager_ref);
         // push an empty message for UI to show a message card
-        h.push(assistant_msg("", None::<&str>));
+        h.push(chat_manager_ref.write().insert(assistant_msg("", None::<&str>)));
         drop(h);
         let mut stream = gpt_client.read()
             .chat()
@@ -48,9 +57,12 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
                         // azure openai service returns empty response on first call
                         continue;
                     }
-                    history.with_mut(|h|
-                        h.last_mut().unwrap().merge_delta(&response.choices[0].delta)
-                    );
+                    let last_msg_id = history.read().last().unwrap().clone();
+                    chat_manager_ref
+                        .write()
+                        .get_mut(&last_msg_id)
+                        .unwrap()
+                        .merge_delta(&response.choices[0].delta);
                 }
                 Err(e) => log::error!("OpenAI Error: {:?}", e),
             }
@@ -62,12 +74,22 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
 
 #[inline_props]
 pub fn ChatContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
+    let mut chat_manager = ChatManager::new();
+    let history = history.into_iter().map(|msg| {
+        let id = chat_manager.insert(msg.clone());
+        id
+    }).collect::<LinkedChatHistory>();
+    use_shared_state_provider(cx, || chat_manager);
+
     let history = use_ref(cx, || history.clone());
-    let gpt_client = use_shared_state::<GPTClient>(cx).unwrap();
     let request_processing = use_state(cx, || false);
+
+    let gpt_client = use_shared_state::<GPTClient>(cx).unwrap();
+    let chat_manager = use_shared_state::<ChatManager>(cx).unwrap();
+
     // request handler
     use_coroutine(cx, |rx|
-        handle_request(rx, history.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
+        handle_request(rx, chat_manager.to_owned(), history.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
     );
     render! {
         div {
@@ -77,7 +99,7 @@ pub fn ChatContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
                 history.read().iter().map(
                     |msg| rsx!{
                         MessageCard {
-                            chat_msg: msg.clone()
+                            chat_msg_id: msg.clone()
                         }
                     }
                 )
@@ -91,7 +113,9 @@ pub fn ChatContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
 
 
 #[inline_props]
-pub fn MessageCard(cx: Scope, chat_msg: ChatMsg) -> Element {
+pub fn MessageCard(cx: Scope, chat_msg_id: MessageId) -> Element {
+    let chat_manager = use_shared_state::<ChatManager>(cx).unwrap().read();
+    let chat_msg = chat_manager.get(&chat_msg_id).unwrap();
     let msg = chat_msg.msg.content.as_ref().unwrap();
     match chat_msg.msg.role {
         Role::System => render! {
