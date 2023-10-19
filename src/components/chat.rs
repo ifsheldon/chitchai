@@ -7,7 +7,7 @@ use futures_util::stream::StreamExt;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs, Role};
 use transprompt::utils::llm::openai::ChatMsg;
 
-use crate::app::GPTClient;
+use crate::app::{AppEvents, GPTClient};
 use crate::chat::{ChatManager, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
@@ -170,6 +170,7 @@ pub fn MessageCard(cx: Scope, chat_msg_id: MessageId) -> Element {
 #[inline_props]
 pub fn ChatMessageInput(cx: Scope, disable_submit: bool) -> Element {
     const TEXTAREA_ID: &str = "chat-input";
+    let app_event_handler = use_coroutine_handle::<AppEvents>(cx).unwrap();
     let customization = &use_shared_state::<StoredStates>(cx).unwrap().read().customization;
     let tick = use_state(cx, || 0_usize);
     // configure timer
@@ -214,7 +215,13 @@ pub fn ChatMessageInput(cx: Scope, disable_submit: bool) -> Element {
             id: "chat-form",
             onsubmit: move |_| {
                 log::info!("onsubmit {}", &input_value.get().value);
-                request_sender.send(Request(input_value.get().value.clone()));
+                let input_value = &input_value.get().value;
+                if input_value.to_lowercase().starts_with("/setting") {
+                    // FIXME: remove this command and add a button somewhere else to toggle sidebar
+                    app_event_handler.send(AppEvents::ToggleSidebar);
+                } else {
+                    request_sender.send(Request(input_value.clone()));
+                }
                 clear_textarea.restart();
             },
             label {

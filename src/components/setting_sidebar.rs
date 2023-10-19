@@ -3,6 +3,8 @@ use std::fmt::{Display, Formatter};
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
+use crate::app::AppEvents;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GPTService {
     AzureOpenAI,
@@ -100,9 +102,11 @@ pub fn SettingSidebar(cx: Scope) -> Element {
 }
 
 fn CloseSettingButton(cx: Scope) -> Element {
+    let app_event_handler = use_coroutine_handle::<AppEvents>(cx).unwrap();
     render! {
         button {
             class: "inline-flex rounded-lg p-1 hover:bg-slate-700",
+            onclick: |_| app_event_handler.send(AppEvents::ToggleSidebar),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
