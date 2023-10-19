@@ -1,11 +1,50 @@
 use dioxus::prelude::*;
+use futures_util::StreamExt;
+
+use crate::app::AppEvents;
+
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChatSidebarEvent {
+    ToggleChatHistory,
+    NewChat,
+    EnterDiscovery,
+    EnterUserProfile,
+}
+
+async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>, show_chat: UseState<bool>) {
+    while let Some(event) = rx.next().await {
+        match event {
+            ChatSidebarEvent::ToggleChatHistory => show_chat.modify(|s| !(*s)),
+            ChatSidebarEvent::NewChat => {
+                // TODO: implement adding a new chat
+                log::info!("NewChat");
+            }
+            ChatSidebarEvent::EnterDiscovery => {
+                // TODO: implement entering discovery
+                log::info!("EnterDiscovery");
+            }
+            ChatSidebarEvent::EnterUserProfile => {
+                // TODO: implement entering user profile
+                log::info!("EnterUserProfile");
+            }
+            _ => log::warn!("Unknown event: {:?}", event),
+        }
+    }
+}
 
 pub fn ChatSidebar(cx: Scope) -> Element {
+    let show_chat_history = use_state(cx, || false);
+    use_coroutine(cx, |rx| event_handler(rx, show_chat_history.to_owned()));
     render! {
         aside {
             class: "flex",
             IconSidebar {}
-            ChatHistorySidebar {}
+            if *show_chat_history.get() {
+                rsx! {
+                    ChatHistorySidebar {}
+                }
+            }
         }
     }
 }
@@ -114,10 +153,12 @@ pub fn Logo(cx: Scope) -> Element {
 }
 
 pub fn NewConversationButton(cx: Scope) -> Element {
+    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
     render! {
         a {
             href: "#",
             class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
+            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::NewChat),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -153,10 +194,12 @@ pub fn NewConversationButton(cx: Scope) -> Element {
 }
 
 pub fn ConversationListButton(cx: Scope) -> Element {
+    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
     render! {
         a {
             href: "#",
             class: "rounded-lg bg-blue-100 p-1.5 text-blue-600 transition-colors duration-200 dark:bg-slate-800 dark:text-blue-600",
+            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::ToggleChatHistory),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -183,10 +226,12 @@ pub fn ConversationListButton(cx: Scope) -> Element {
 }
 
 pub fn DiscoverButton(cx: Scope) -> Element {
+    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
     render! {
         a {
             href: "#",
             class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
+            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterDiscovery),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -213,10 +258,12 @@ pub fn DiscoverButton(cx: Scope) -> Element {
 }
 
 pub fn UserProfileButton(cx: Scope) -> Element {
+    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
     render! {
         a {
             href: "#",
             class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
+            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterUserProfile),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -246,10 +293,12 @@ pub fn UserProfileButton(cx: Scope) -> Element {
 }
 
 pub fn SettingsButton(cx: Scope) -> Element {
+    let app_event_handler = use_coroutine_handle::<AppEvents>(cx).unwrap();
     render! {
         a {
             href: "#",
             class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
+            onclick: |_| app_event_handler.send(AppEvents::ToggleSettingsSidebar),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
