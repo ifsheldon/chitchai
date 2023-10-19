@@ -1,15 +1,27 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use transprompt::utils::llm::openai::ChatMsg;
 use uuid::Uuid;
 
+use crate::agents::AgentConfig;
+
 pub type LinkedChatHistory = Vec<MessageId>;
 
-#[derive(Clone, Copy, Hash, PartialEq, Debug, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Debug, Eq, Serialize, Deserialize)]
 pub struct MessageId(Uuid);
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ChatManager {
     messages: HashMap<MessageId, ChatMsg>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Chat {
+    pub topic: String,
+    pub date: String,
+    pub agent_histories: HashMap<String, LinkedChatHistory>,
+    pub agents: HashMap<String, AgentConfig>,
 }
 
 impl ChatManager {

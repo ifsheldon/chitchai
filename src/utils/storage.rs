@@ -2,12 +2,15 @@ use gloo_storage::{LocalStorage, Storage};
 use serde::{Deserialize, Serialize};
 
 use crate::app::APP_NAME;
+// use crate::chat::{Chat, ChatManager};
 use crate::utils::customization::Customization;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct StoredStates {
     pub run_count: usize,
     pub customization: Customization,
+    // pub chat_manager: ChatManager,
+    // pub chats: Vec<Chat>
 }
 
 impl StoredStates {
