@@ -4,7 +4,7 @@ use transprompt::utils::llm::openai::ChatMsg;
 pub mod customization;
 pub mod storage;
 pub mod auth;
-
+pub mod settings;
 pub fn sys_msg(string: impl Into<String>) -> ChatMsg {
     ChatMsg {
         msg: ChatCompletionRequestMessage {

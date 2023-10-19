@@ -1,46 +1,8 @@
-use std::fmt::{Display, Formatter};
-
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
 use crate::app::AppEvents;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GPTService {
-    AzureOpenAI,
-    OpenAI,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum OpenAIModel {
-    GPT35,
-    GPT35_16k,
-    GPT4,
-    GPT4_32k,
-}
-
-impl Display for OpenAIModel {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            OpenAIModel::GPT35 => "gpt-3.5-turbo",
-            OpenAIModel::GPT35_16k => "gpt-3.5-turbo-16k",
-            OpenAIModel::GPT4 => "gpt-4",
-            OpenAIModel::GPT4_32k => "gpt-4-32k",
-        })
-    }
-}
-
-impl PartialEq<str> for OpenAIModel {
-    fn eq(&self, other: &str) -> bool {
-        let other = other.trim().to_lowercase();
-        match self {
-            OpenAIModel::GPT35 => other == "gpt-3.5-turbo",
-            OpenAIModel::GPT35_16k => other == "gpt-3.5-turbo-16k",
-            OpenAIModel::GPT4 => other == "gpt-4",
-            OpenAIModel::GPT4_32k => other == "gpt-4-32k",
-        }
-    }
-}
+use crate::utils::settings::{GPTService, OpenAIModel};
 
 #[derive(Debug, Clone, PartialEq)]
 enum SettingEvent {
@@ -93,7 +55,8 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                 }
                 Toggle {}
                 ServiceConfigs {
-                    gpt_service: **gpt_service
+                    gpt_service: gpt_service.get().clone(),
+                    enable_group_chat: *enable_group_chat.get(),
                 }
                 ModelParameters {}
             }
@@ -204,6 +167,7 @@ pub fn Toggle(cx: Scope) -> Element {
 struct ServiceConfigsProps {
     #[props(! optional)]
     gpt_service: Option<GPTService>,
+    enable_group_chat: bool,
 }
 
 fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
@@ -231,7 +195,9 @@ fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
                         SecretInputs {
                             gpt_service: gpt_service,
                         }
-                        SelectModel {}
+                        SelectModel {
+                            enable_group_chat: cx.props.enable_group_chat,
+                        }
                         button {
                             r#type: "button",
                             class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
@@ -347,15 +313,15 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
     }
 }
 
-fn SelectModel(cx: Scope) -> Element {
-    const ALL_MODELS: [OpenAIModel; 4] = [
-        OpenAIModel::GPT35,
-        OpenAIModel::GPT35_16k,
-        OpenAIModel::GPT4,
-        OpenAIModel::GPT4_32k,
-    ];
+#[inline_props]
+fn SelectModel(cx: Scope, enable_group_chat: bool) -> Element {
     const NULL_OPTION: &str = "Select a model";
     let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
+    let usable_models = if *enable_group_chat {
+        OpenAIModel::gpt4_models()
+    } else {
+        OpenAIModel::all_models()
+    };
     render! {
         div {
             label {
@@ -370,7 +336,7 @@ fn SelectModel(cx: Scope) -> Element {
                     if model == NULL_OPTION {
                         setting_event_handler.send(SettingEvent::SelectModel(None));
                     } else {
-                        match ALL_MODELS.iter().find(|m| (*m).eq(model)).cloned() {
+                        match usable_models.iter().find(|m| (*m).eq(model)).cloned() {
                             Some(m) => setting_event_handler.send(SettingEvent::SelectModel(Some(m))),
                             None => log::error!("Unknown model: {}", model),
                         }
@@ -382,7 +348,7 @@ fn SelectModel(cx: Scope) -> Element {
                     value: "",
                     "{NULL_OPTION}"
                 }
-                ALL_MODELS.iter().map(|model| rsx! {
+                usable_models.iter().map(|model| rsx! {
                     option {
                         value: "{model}",
                         "{model}"
