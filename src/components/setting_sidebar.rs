@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use futures_util::StreamExt;
 
 #[derive(Debug, Clone, PartialEq)]
 enum GPTService {
@@ -6,10 +7,32 @@ enum GPTService {
     OpenAI(String),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum SettingEvent {
+    ToggleEnableGroupChat,
+    SelectService(Option<GPTService>),
+}
+
+async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
+                               enable_group_chat: UseState<bool>,
+                               gpt_service: UseState<Option<GPTService>>) {
+    while let Some(event) = rx.next().await {
+        log::info!("setting_event_handler {:?}", event);
+        match event {
+            SettingEvent::ToggleEnableGroupChat => enable_group_chat.modify(|e| !*e),
+            SettingEvent::SelectService(service) => gpt_service.set(service),
+        }
+    }
+    log::error!("setting_event_handler exited");
+}
+
 
 pub fn SettingSidebar(cx: Scope) -> Element {
     let gpt_service = use_state(cx, || None::<GPTService>);
     let enable_group_chat = use_state(cx, || false);
+    use_coroutine(cx, |rx| setting_event_handler(rx,
+                                                 enable_group_chat.to_owned(),
+                                                 gpt_service.to_owned()));
     render! {
         aside {
             class: "flex",
@@ -69,6 +92,7 @@ fn CloseSettingButton(cx: Scope) -> Element {
 }
 
 fn SelectServiceSection(cx: Scope) -> Element {
+    let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
     render! {
         div {
             class: "px-2 py-4 text-slate-800 dark:text-slate-200",
@@ -80,6 +104,15 @@ fn SelectServiceSection(cx: Scope) -> Element {
             select {
                 name: "select-service",
                 id: "select-service",
+                onchange: |select| {
+                    let value = select.data.value.as_str();
+                    match value {
+                        "AzureOpenAI" => setting_event_handler.send(SettingEvent::SelectService(Some(GPTService::AzureOpenAI))),
+                        "OpenAI" => setting_event_handler.send(SettingEvent::SelectService(Some(GPTService::OpenAI(String::new())))),
+                        "Select a GPT service" => setting_event_handler.send(SettingEvent::SelectService(None)),
+                        _ => log::error!("Unknown select-service value: {}", value),
+                    }
+                },
                 class: "mt-2 w-full cursor-pointer rounded-lg border-r-4 border-transparent bg-slate-200 py-3 pl-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800",
                 option {
                     value: "",
@@ -99,6 +132,7 @@ fn SelectServiceSection(cx: Scope) -> Element {
 }
 
 pub fn Toggle(cx: Scope) -> Element {
+    let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
     render! {
         div {
             class: "px-2 py-4",
@@ -106,6 +140,7 @@ pub fn Toggle(cx: Scope) -> Element {
                 class: "relative flex cursor-pointer items-center",
                 input {
                     r#type: "checkbox",
+                    onclick: |_| setting_event_handler.send(SettingEvent::ToggleEnableGroupChat),
                     value: "",
                     class: "peer sr-only",
                 }
