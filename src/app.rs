@@ -10,7 +10,6 @@ use crate::utils::storage::StoredStates;
 use crate::utils::sys_msg;
 
 pub const APP_NAME: &str = "chitchai";
-const NONE: Option<&str> = None;
 
 pub type GPTClient = Client<AzureConfig>;
 
