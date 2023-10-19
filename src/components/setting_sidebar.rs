@@ -93,7 +93,7 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                 ServiceConfigs {
                     gpt_service: **gpt_service
                 }
-                ModelConfigs {}
+                ModelParameters {}
             }
         }
     }
@@ -389,7 +389,7 @@ fn SelectModel(cx: Scope) -> Element {
     }
 }
 
-fn ModelConfigs(cx: Scope) -> Element {
+fn ModelParameters(cx: Scope) -> Element {
     const LABEL_STYLE: &str = "mb-2 mt-4 block px-2 text-sm font-medium";
     const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
     render! {
@@ -424,7 +424,7 @@ fn ModelConfigs(cx: Scope) -> Element {
             button {
                 r#type: "button",
                 class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
-                "Save Configs"
+                "Save Parameters"
             }
         }
     }
