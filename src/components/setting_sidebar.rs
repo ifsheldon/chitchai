@@ -94,6 +94,7 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                 AdvanceSettings {
                     gpt_service: **gpt_service
                 }
+                ModelConfigs {}
             }
         }
     }
@@ -229,12 +230,6 @@ fn AdvanceSettings(cx: Scope<AdvanceSettingsProps>) -> Element {
                         SelectModel {}
                     },
                 }
-            }
-            ModelConfigs {}
-            button {
-                r#type: "button",
-                class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
-                "Save changes"
             }
         }
     }
@@ -394,6 +389,11 @@ fn ModelConfigs(cx: Scope) -> Element {
     const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
     render! {
         div {
+            class: "my-4 border-t border-slate-300 px-2 py-4 text-slate-800 dark:border-slate-700 dark:text-slate-200",
+            label {
+                class: "px-2 text-xs uppercase text-slate-500 dark:text-slate-400",
+                "Model Configurations"
+            }
             label {
                 r#for: "max-tokens",
                 class: "{LABEL_STYLE}",
@@ -415,6 +415,11 @@ fn ModelConfigs(cx: Scope) -> Element {
                 id: "model-temperature",
                 class: "{INPUT_STYLE}",
                 placeholder: "0.7",
+            }
+            button {
+                r#type: "button",
+                class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
+                "Save Configs"
             }
         }
     }
