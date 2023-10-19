@@ -91,7 +91,7 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                 }
                 SelectServiceSection {}
                 Toggle {}
-                AdvanceSettings {
+                ServiceConfigs {
                     gpt_service: **gpt_service
                 }
                 ModelConfigs {}
@@ -203,18 +203,18 @@ pub fn Toggle(cx: Scope) -> Element {
 }
 
 #[derive(Props, PartialEq)]
-struct AdvanceSettingsProps {
+struct ServiceConfigsProps {
     #[props(! optional)]
     gpt_service: Option<GPTService>,
 }
 
-fn AdvanceSettings(cx: Scope<AdvanceSettingsProps>) -> Element {
+fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
     render! {
         div {
             class: "my-4 border-t border-slate-300 px-2 py-4 text-slate-800 dark:border-slate-700 dark:text-slate-200",
             label {
                 class: "px-2 text-xs uppercase text-slate-500 dark:text-slate-400",
-                "Advanced"
+                "Service Configurations"
             }
             if let Some(gpt_service) = cx.props.gpt_service {
                 match gpt_service {
