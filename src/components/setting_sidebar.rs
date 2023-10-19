@@ -6,6 +6,7 @@ enum GPTService {
     OpenAI(String),
 }
 
+
 pub fn SettingSidebar(cx: Scope) -> Element {
     let gpt_service = use_state(cx, || None::<GPTService>);
     let enable_group_chat = use_state(cx, || false);
@@ -24,17 +25,8 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                 }
                 SelectServiceSection {}
                 Toggle {}
-                // TODO: fix this verbosity
-                if let Some(gpt_service) = gpt_service.get().as_ref() {
-                    render!{
-                        AdvanceSettings {
-                            gpt_service: gpt_service.clone()
-                        }
-                    }
-                } else {
-                    render!{
-                        AdvanceSettings {}
-                    }
+                AdvanceSettings {
+                    gpt_service: gpt_service
                 }
             }
         }
@@ -129,8 +121,13 @@ pub fn Toggle(cx: Scope) -> Element {
     }
 }
 
-#[inline_props]
-fn AdvanceSettings(cx: Scope, gpt_service: Option<GPTService>) -> Element {
+#[derive(Props)]
+struct AdvanceSettingsProps<'a> {
+    #[props(! optional)]
+    gpt_service: &'a Option<GPTService>,
+}
+
+fn AdvanceSettings<'a>(cx: Scope<'a, AdvanceSettingsProps>) -> Element<'a> {
     render! {
         div {
             class: "my-4 border-t border-slate-300 px-2 py-4 text-slate-800 dark:border-slate-700 dark:text-slate-200",
@@ -138,16 +135,16 @@ fn AdvanceSettings(cx: Scope, gpt_service: Option<GPTService>) -> Element {
                 class: "px-2 text-xs uppercase text-slate-500 dark:text-slate-400",
                 "Advanced"
             }
-            if let Some(gpt_service) = gpt_service {
+            if let Some(gpt_service) = cx.props.gpt_service {
                 match gpt_service {
                     GPTService::AzureOpenAI => render! {
                             SecretInputs {
-                            gpt_service: gpt_service.clone(),
+                            gpt_service: gpt_service,
                         }
                     },
                     GPTService::OpenAI(_) => render!{
                         SecretInputs {
-                            gpt_service: gpt_service.clone(),
+                            gpt_service: gpt_service,
                         }
                         SelectModel {}
                     },
@@ -163,11 +160,15 @@ fn AdvanceSettings(cx: Scope, gpt_service: Option<GPTService>) -> Element {
     }
 }
 
-#[inline_props]
-fn SecretInputs(cx: Scope, gpt_service: GPTService) -> Element {
+#[derive(Props)]
+struct SecretInputsProps<'a> {
+    gpt_service: &'a GPTService,
+}
+
+fn SecretInputs<'a>(cx: Scope<'a, SecretInputsProps>) -> Element<'a> {
     const LABEL_STYLE: &str = "mb-2 mt-4 block px-2 text-sm font-medium";
     const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
-    match gpt_service {
+    match cx.props.gpt_service {
         GPTService::OpenAI(_) => render! {
             div {
                 // API Key
