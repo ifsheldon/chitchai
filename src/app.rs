@@ -3,7 +3,7 @@ use futures_util::StreamExt;
 use transprompt::async_openai::Client;
 use transprompt::async_openai::config::AzureConfig;
 
-use crate::components::{ChatContainer, SettingSidebar};
+use crate::components::{ChatContainer, ChatSidebar, SettingSidebar};
 use crate::prompt_engineer::prompt_templates::ASSISTANT_SYS_PROMPT;
 use crate::utils::auth::Auth;
 use crate::utils::storage::StoredStates;
@@ -48,6 +48,7 @@ pub fn App(cx: Scope) -> Element {
     render! {
         div {
             class: "flex h-full w-full",
+            ChatSidebar {}
             div {
                 class: "flex-grow overflow-auto",
                 ChatContainer {
