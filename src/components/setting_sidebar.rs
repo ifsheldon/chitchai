@@ -89,7 +89,6 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                         "Settings"
                     }
                 }
-                SelectServiceSection {}
                 Toggle {}
                 ServiceConfigs {
                     gpt_service: **gpt_service
@@ -136,17 +135,12 @@ fn CloseSettingButton(cx: Scope) -> Element {
 }
 
 fn SelectServiceSection(cx: Scope) -> Element {
-    const NULL_OPTION: &str = "Select a GPT service";
+    const NULL_OPTION: &str = "Select AI Provider";
     let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
 
     render! {
         div {
             class: "px-2 py-4 text-slate-800 dark:text-slate-200",
-            label {
-                r#for: "select-service",
-                class: "px-2 text-sm font-medium",
-                "Services"
-            }
             select {
                 name: "select-service",
                 id: "select-service",
@@ -216,18 +210,29 @@ fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
                 class: "px-2 text-xs uppercase text-slate-500 dark:text-slate-400",
                 "Service Configurations"
             }
+            SelectServiceSection {}
             if let Some(gpt_service) = cx.props.gpt_service {
                 match gpt_service {
                     GPTService::AzureOpenAI => render! {
                             SecretInputs {
-                            gpt_service: gpt_service,
-                        }
+                                gpt_service: gpt_service,
+                            }
+                            button {
+                                r#type: "button",
+                                class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
+                                "Save Configs"
+                            }
                     },
                     GPTService::OpenAI => render!{
                         SecretInputs {
                             gpt_service: gpt_service,
                         }
                         SelectModel {}
+                        button {
+                            r#type: "button",
+                            class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
+                            "Save Configs"
+                        }
                     },
                 }
             }
