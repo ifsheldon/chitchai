@@ -1,6 +1,14 @@
 use dioxus::prelude::*;
 
+#[derive(Debug, Clone, PartialEq)]
+enum GPTService {
+    AzureOpenAI,
+    OpenAI(String),
+}
+
 pub fn SettingSidebar(cx: Scope) -> Element {
+    let gpt_service = use_state(cx, || None::<GPTService>);
+    let enable_group_chat = use_state(cx, || false);
     render! {
         aside {
             class: "flex",
@@ -14,9 +22,20 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                         "Settings"
                     }
                 }
-                SelectModeSection {}
+                SelectServiceSection {}
                 Toggle {}
-                AdvanceSettings {}
+                // TODO: fix this verbosity
+                if let Some(gpt_service) = gpt_service.get().as_ref() {
+                    render!{
+                        AdvanceSettings {
+                            gpt_service: gpt_service.clone()
+                        }
+                    }
+                } else {
+                    render!{
+                        AdvanceSettings {}
+                    }
+                }
             }
         }
     }
@@ -57,38 +76,30 @@ fn CloseSettingButton(cx: Scope) -> Element {
     }
 }
 
-fn SelectModeSection(cx: Scope) -> Element {
+fn SelectServiceSection(cx: Scope) -> Element {
     render! {
         div {
             class: "px-2 py-4 text-slate-800 dark:text-slate-200",
             label {
-                r#for: "select-mode",
+                r#for: "select-service",
                 class: "px-2 text-sm font-medium",
-                "Mode"
+                "Services"
             }
             select {
-                name: "select-mode",
-                id: "select-mode",
+                name: "select-service",
+                id: "select-service",
                 class: "mt-2 w-full cursor-pointer rounded-lg border-r-4 border-transparent bg-slate-200 py-3 pl-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800",
                 option {
                     value: "",
-                    "Select a mode"
+                    "Select a GPT service"
                 }
                 option {
-                    value: "Complete",
-                    "Complete"
+                    value: "AzureOpenAI",
+                    "Azure OpenAI"
                 }
                 option {
-                    value: "Chat",
-                    "Chat"
-                }
-                option {
-                    value: "Insert",
-                    "Insert"
-                }
-                option {
-                    value: "Edit",
-                    "Edit"
+                    value: "OpenAI",
+                    "OpenAI"
                 }
             }
         }
@@ -111,14 +122,15 @@ pub fn Toggle(cx: Scope) -> Element {
                 }
                 span {
                     class: "ml-3 text-sm font-medium text-slate-800 dark:text-slate-200",
-                    "Toggle"
+                    "Enable Group Chat"
                 }
             }
         }
     }
 }
 
-fn AdvanceSettings(cx: Scope) -> Element {
+#[inline_props]
+fn AdvanceSettings(cx: Scope, gpt_service: Option<GPTService>) -> Element {
     render! {
         div {
             class: "my-4 border-t border-slate-300 px-2 py-4 text-slate-800 dark:border-slate-700 dark:text-slate-200",
@@ -126,8 +138,21 @@ fn AdvanceSettings(cx: Scope) -> Element {
                 class: "px-2 text-xs uppercase text-slate-500 dark:text-slate-400",
                 "Advanced"
             }
-            SecretInputs {}
-            SelectModel {}
+            if let Some(gpt_service) = gpt_service {
+                match gpt_service {
+                    GPTService::AzureOpenAI => render! {
+                            SecretInputs {
+                            gpt_service: gpt_service.clone(),
+                        }
+                    },
+                    GPTService::OpenAI(_) => render!{
+                        SecretInputs {
+                            gpt_service: gpt_service.clone(),
+                        }
+                        SelectModel {}
+                    },
+                }
+            }
             ModelConfigs {}
             button {
                 r#type: "button",
@@ -138,30 +163,100 @@ fn AdvanceSettings(cx: Scope) -> Element {
     }
 }
 
-fn SecretInputs(cx: Scope) -> Element {
-    render! {
-        div {
-            label {
-                r#for: "api-key",
-                class: "mb-2 mt-4 block px-2 text-sm font-medium",
-                "API Key"
+#[inline_props]
+fn SecretInputs(cx: Scope, gpt_service: GPTService) -> Element {
+    const LABEL_STYLE: &str = "mb-2 mt-4 block px-2 text-sm font-medium";
+    const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
+    match gpt_service {
+        GPTService::OpenAI(_) => render! {
+            div {
+                // API Key
+                label {
+                    r#for: "api-key",
+                    class: "{LABEL_STYLE}",
+                    "API Key"
+                }
+                input {
+                    r#type: "password",
+                    id: "api-key",
+                    class: "{INPUT_STYLE}",
+                    placeholder: "Required"
+                }
+                // Base URL
+                label {
+                    r#for: "base-url",
+                    class: "{LABEL_STYLE}",
+                    "Base URL / API Base (Optional)"
+                }
+                input {
+                    r#type: "url",
+                    id: "base-url",
+                    class: "{INPUT_STYLE}",
+                    placeholder: "https://api.openai.com",
+                }
+                // Org ID
+                label {
+                    r#for: "org-id",
+                    class: "{LABEL_STYLE}",
+                    "Org ID (Optional)"
+                }
+                input {
+                    r#type: "text",
+                    id: "org-id",
+                    class: "{INPUT_STYLE}",
+                }
             }
-            input {
-                r#type: "password",
-                id: "api-key",
-                class: "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600",
-                placeholder: "4sNhFQ******ffyt",
-            }
-            label {
-                r#for: "base-url",
-                class: "mb-2 mt-4 block px-2 text-sm font-medium",
-                "Base URL"
-            }
-            input {
-                r#type: "url",
-                id: "base-url",
-                class: "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600",
-                placeholder: "https://api.openai.com",
+        },
+        GPTService::AzureOpenAI => render! {
+            div {
+                // API Key
+                label {
+                    r#for: "api-key",
+                    class: "{LABEL_STYLE}",
+                    "API Key"
+                }
+                input {
+                    r#type: "password",
+                    id: "api-key",
+                    class: "{INPUT_STYLE}",
+                    placeholder: "Required"
+                }
+                // Base URL
+                label {
+                    r#for: "base-url",
+                    class: "{LABEL_STYLE}",
+                    "Base URL / API Base"
+                }
+                input {
+                    r#type: "url",
+                    id: "base-url",
+                    class: "{INPUT_STYLE}",
+                    placeholder: "Required",
+                }
+                // Deployment ID
+                label {
+                    r#for: "deployment-id",
+                    class: "{LABEL_STYLE}",
+                    "Deployment ID"
+                }
+                input {
+                    r#type: "text",
+                    id: "deployment-id",
+                    class: "{INPUT_STYLE}",
+                    placeholder: "Required",
+                }
+                // API Version
+                label {
+                    r#for: "api-version",
+                    class: "{LABEL_STYLE}",
+                    "API Version"
+                }
+                input {
+                    r#type: "text",
+                    id: "api-version",
+                    class: "{INPUT_STYLE}",
+                    placeholder: "Required",
+                }
             }
         }
     }
@@ -184,24 +279,16 @@ fn SelectModel(cx: Scope) -> Element {
                     "gpt-3.5-turbo"
                 }
                 option {
+                    value: "gpt-3.5-turbo-16k",
+                    "gpt-3.5-turbo-16k"
+                }
+                option {
                     value: "gpt-4",
                     "gpt-4"
                 }
                 option {
-                    value: "gpt-4-0314",
-                    "gpt-4-0314"
-                }
-                option {
                     value: "gpt-4-32k",
                     "gpt-4-32k"
-                }
-                option {
-                    value: "gpt-4-32k-0314",
-                    "gpt-4-32k-0314"
-                }
-                option {
-                    value: "gpt-3.5-turbo-0301",
-                    "gpt-3.5-turbo-0301"
                 }
             }
         }
@@ -209,40 +296,31 @@ fn SelectModel(cx: Scope) -> Element {
 }
 
 fn ModelConfigs(cx: Scope) -> Element {
+    const LABEL_STYLE: &str = "mb-2 mt-4 block px-2 text-sm font-medium";
+    const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
     render! {
         div {
             label {
                 r#for: "max-tokens",
-                class: "mb-2 mt-4 block px-2 text-sm font-medium",
+                class: "{LABEL_STYLE}",
                 "Max tokens"
             }
             input {
                 r#type: "number",
                 id: "max-tokens",
-                class: "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600",
+                class: "{INPUT_STYLE}",
                 placeholder: "2048",
             }
             label {
-                r#for: "max-tokens",
-                class: "mb-2 mt-4 block px-2 text-sm font-medium",
+                r#for: "model-temperature",
+                class: "{LABEL_STYLE}",
                 "Temperature"
             }
             input {
                 r#type: "number",
-                id: "max-tokens",
-                class: "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600",
+                id: "model-temperature",
+                class: "{INPUT_STYLE}",
                 placeholder: "0.7",
-            }
-            label {
-                r#for: "top-p",
-                class: "mb-2 mt-4 block px-2 text-sm font-medium",
-                "Top P"
-            }
-            input {
-                r#type: "number",
-                id: "top-p",
-                class: "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600",
-                placeholder: "1",
             }
         }
     }
