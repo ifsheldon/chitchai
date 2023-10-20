@@ -8,7 +8,7 @@ use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatC
 use transprompt::utils::llm::openai::ChatMsg;
 
 use crate::agents::AgentType::{Assistant, User};
-use crate::app::{AppEvents, GPTClient};
+use crate::app::{AuthedClient, GPTClient};
 use crate::chat::{Chat, ChatManager, DEFAULT_AGENT_TO_DISPLAY, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
@@ -44,9 +44,14 @@ fn push_history(global_mut: &mut RefMut<StoredStates>,
 async fn handle_request(mut rx: UnboundedReceiver<Request>,
                         chat_idx: usize,
                         global: UseSharedState<StoredStates>,
-                        gpt_client: UseSharedState<GPTClient>,
+                        authed_client: UseSharedState<AuthedClient>,
                         processing_flag: UseState<bool>) {
     while let Some(Request(request)) = rx.next().await {
+        if authed_client.read().is_none() {
+            // TODO: handle this error and make a toast to notify user
+            log::error!("authed_client is None");
+            continue;
+        }
         processing_flag.set(true);
         log::info!("request_handler {}", request);
         let mut global_mut = global.write();
@@ -67,16 +72,26 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         push_history(&mut global_mut, chat_idx, User.str(), assistant_reply_id);
         // drop write lock before await point
         drop(global_mut);
-        let mut stream = gpt_client.read()
-            .chat()
-            .create_stream(CreateChatCompletionRequestArgs::default()
-                .model("gpt-3.5-turbo-0613")
-                .messages(messages_to_send)
-                .build()
-                .expect("creating request failed")
-            )
-            .await
-            .expect("creating stream failed");
+        let mut stream = match authed_client.read().as_ref().unwrap() {
+            GPTClient::Azure(client) => client.chat()
+                .create_stream(CreateChatCompletionRequestArgs::default()
+                    .model("gpt-3.5-turbo-0613")
+                    .messages(messages_to_send)
+                    .build()
+                    .expect("creating request failed")
+                )
+                .await
+                .expect("creating stream failed"),
+            GPTClient::OpenAI(client) => client.chat()
+                .create_stream(CreateChatCompletionRequestArgs::default()
+                    .model("gpt-3.5-turbo-0613")
+                    .messages(messages_to_send)
+                    .build()
+                    .expect("creating request failed")
+                )
+                .await
+                .expect("creating stream failed"),
+        };
         while let Some(chunk) = stream.next().await {
             match chunk {
                 Ok(response) => {
@@ -105,10 +120,14 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
 pub fn ChatContainer(cx: Scope, chat_idx: usize) -> Element {
     let stored_states = use_shared_state::<StoredStates>(cx).unwrap();
     let request_processing = use_state(cx, || false);
-    let gpt_client = use_shared_state::<GPTClient>(cx).unwrap();
+    let authed_client = use_shared_state::<AuthedClient>(cx).unwrap();
     // request handler
     use_coroutine(cx, |rx|
-        handle_request(rx, *chat_idx, stored_states.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
+        handle_request(rx,
+                       *chat_idx,
+                       stored_states.to_owned(),
+                       authed_client.to_owned(),
+                       request_processing.to_owned()),
     );
     // get data
     let stored_states = stored_states.read();
@@ -201,7 +220,6 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
 #[inline_props]
 pub fn ChatMessageInput(cx: Scope, disable_submit: bool) -> Element {
     const TEXTAREA_ID: &str = "chat-input";
-    let app_event_handler = use_coroutine_handle::<AppEvents>(cx).unwrap();
     let customization = &use_shared_state::<StoredStates>(cx).unwrap().read().customization;
     let tick = use_state(cx, || 0_usize);
     // configure timer

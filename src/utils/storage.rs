@@ -7,7 +7,9 @@ use crate::agents::AgentConfig;
 use crate::agents::AgentType::{Assistant, User};
 use crate::app::APP_NAME;
 use crate::chat::{Chat, ChatManager};
+use crate::utils::auth::Auth;
 use crate::utils::customization::Customization;
+use crate::utils::settings::GPTService;
 use crate::utils::sys_msg;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
@@ -16,6 +18,9 @@ pub struct StoredStates {
     pub customization: Customization,
     pub chat_manager: ChatManager,
     pub chats: Vec<Chat>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth: Option<Auth>,
+    pub selected_service: Option<GPTService>,
 }
 
 impl StoredStates {
@@ -53,6 +58,8 @@ impl StoredStates {
                 customization: Default::default(),
                 chat_manager,
                 chats: vec![default_chat],
+                auth: None,
+                selected_service: None,
             }
         })
     }

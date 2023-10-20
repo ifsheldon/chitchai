@@ -1,17 +1,21 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 use transprompt::async_openai::Client;
-use transprompt::async_openai::config::AzureConfig;
+use transprompt::async_openai::config::{AzureConfig, OpenAIConfig};
 
 use crate::components::{ChatContainer, ChatSidebar, SettingSidebar};
-use crate::prompt_engineer::prompt_templates::ASSISTANT_SYS_PROMPT;
 use crate::utils::auth::Auth;
 use crate::utils::storage::StoredStates;
-use crate::utils::sys_msg;
 
 pub const APP_NAME: &str = "chitchai";
 
-pub type GPTClient = Client<AzureConfig>;
+#[derive(Debug, Clone)]
+pub enum GPTClient {
+    Azure(Client<AzureConfig>),
+    OpenAI(Client<OpenAIConfig>),
+}
+
+pub type AuthedClient = Option<GPTClient>;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,26 +23,38 @@ pub enum AppEvents {
     ToggleSettingsSidebar,
 }
 
-pub fn App(cx: Scope) -> Element {
-    let mut stored_states = StoredStates::get_or_init();
-    stored_states.run_count += 1;
-    stored_states.save();
-    log::info!("This is your {} time running ChitChai!", stored_states.run_count);
+#[derive(Debug, Clone, Props, PartialEq)]
+pub struct AppProps {
+    pub stored_states: StoredStates,
+}
+
+pub fn App(cx: Scope<AppProps>) -> Element {
+    let stored_states = cx.props.stored_states.clone();
+    let authed_client: AuthedClient = stored_states
+        .auth
+        .as_ref()
+        .map(|auth| {
+            match auth {
+                Auth::OpenAI { .. } => GPTClient::OpenAI(Client::with_config(auth.clone().into())),
+                Auth::AzureOpenAI { .. } => GPTClient::Azure(Client::with_config(auth.clone().into())),
+                _ => unreachable!(),
+            }
+        });
+    let hide_settings_sidebar = stored_states.auth.is_some() && stored_states.selected_service.is_some();
     // configure share states
     use_shared_state_provider(cx, || stored_states);
-    use_shared_state_provider(cx, || GPTClient::with_config(Auth::default().into()));
+    use_shared_state_provider(cx, || authed_client);
     let global = use_shared_state::<StoredStates>(cx).unwrap();
     // configure local states
-    let hide_sidebar = use_state(cx, || false);
-    let init_history = vec![sys_msg(ASSISTANT_SYS_PROMPT)];
+    let hide_setting_sidebar = use_state(cx, || hide_settings_sidebar);
     // configure event handler
     use_coroutine(cx, |mut rx| {
-        let hide_sidebar = hide_sidebar.to_owned();
+        let hide_setting_sidebar = hide_setting_sidebar.to_owned();
         async move {
             while let Some(event) = rx.next().await {
                 match event {
                     AppEvents::ToggleSettingsSidebar => {
-                        hide_sidebar.modify(|h| !(*h));
+                        hide_setting_sidebar.modify(|h| !(*h));
                     }
                     _ => log::warn!("Unknown event: {:?}", event),
                 }
@@ -58,7 +74,7 @@ pub fn App(cx: Scope) -> Element {
             }
             div {
                 class: "w-1/6",
-                hidden: *hide_sidebar.get(),
+                hidden: *hide_setting_sidebar.get(),
                 SettingSidebar  {}
             }
         }
