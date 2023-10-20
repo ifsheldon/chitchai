@@ -5,6 +5,7 @@ pub mod customization;
 pub mod storage;
 pub mod auth;
 pub mod settings;
+pub mod datetime;
 pub fn sys_msg(string: impl Into<String>) -> ChatMsg {
     ChatMsg {
         msg: ChatCompletionRequestMessage {

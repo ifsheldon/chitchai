@@ -5,21 +5,22 @@ use transprompt::utils::llm::openai::ChatMsg;
 use uuid::Uuid;
 
 use crate::agents::AgentConfig;
+use crate::utils::datetime::DatetimeString;
 
 pub type LinkedChatHistory = Vec<MessageId>;
 
 #[derive(Clone, Copy, Hash, PartialEq, Debug, Eq, Serialize, Deserialize)]
 pub struct MessageId(Uuid);
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct ChatManager {
     messages: HashMap<MessageId, ChatMsg>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Chat {
     pub topic: String,
-    pub date: String,
+    pub date: DatetimeString,
     pub agent_histories: HashMap<String, LinkedChatHistory>,
     pub agents: HashMap<String, AgentConfig>,
 }
