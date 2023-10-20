@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use futures_util::StreamExt;
 
 use crate::app::AppEvents;
+use crate::utils::storage::StoredStates;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,24 +65,7 @@ pub fn IconSidebar(cx: Scope) -> Element {
 }
 
 pub fn ChatHistorySidebar(cx: Scope) -> Element {
-    let FAKE_ITEMS: &[ChatRecord] = &[
-        ChatRecord {
-            title: "Tailwind Classes".to_string(),
-            date: "12 Mar".to_string(),
-        },
-        ChatRecord {
-            title: "explain quantum computing".to_string(),
-            date: "10 Feb".to_string(),
-        },
-        ChatRecord {
-            title: "How to create ERP Diagram".to_string(),
-            date: "22 Jan".to_string(),
-        },
-        ChatRecord {
-            title: "API Scaling Strategies".to_string(),
-            date: "1 Jan".to_string(),
-        },
-    ];
+    let chats = &use_shared_state::<StoredStates>(cx).unwrap().read().chats;
 
     render! {
         div {
@@ -94,15 +78,17 @@ pub fn ChatHistorySidebar(cx: Scope) -> Element {
                 }
                 span {
                     class: "rounded-full bg-blue-600 px-2 py-1 text-xs text-slate-200",
-                    "{FAKE_ITEMS.len()}"
+                    "{chats.len()}"
                 }
             }
             div {
                 class: "mx-2 mt-8 space-y-4",
                 // chat list
-                FAKE_ITEMS.iter().map(|item| rsx!{
+                chats.iter().enumerate().rev().map(|(idx,item)| rsx!{
                     ChatHistoryItem {
-                        chat_record: item.clone(),
+                        idx: idx,
+                        title: item.topic.clone(),
+                        date: item.date.0.clone(),
                     }
                 })
             }
@@ -110,24 +96,18 @@ pub fn ChatHistorySidebar(cx: Scope) -> Element {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ChatRecord {
-    pub title: String,
-    pub date: String,
-}
-
 #[inline_props]
-pub fn ChatHistoryItem(cx: Scope, chat_record: ChatRecord) -> Element {
+pub fn ChatHistoryItem(cx: Scope, idx: usize, title: String, date: String) -> Element {
     render! {
         button {
             class: "flex w-full flex-col gap-y-2 rounded-lg px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:hover:bg-slate-800",
             h1 {
                 class: "text-sm font-medium capitalize text-slate-700 dark:text-slate-200",
-                "{chat_record.title}"
+                "{title}"
             }
             p {
                 class: "text-xs text-slate-500 dark:text-slate-400",
-                "{chat_record.date}"
+                "{date}"
             }
         }
     }

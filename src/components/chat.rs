@@ -8,7 +8,7 @@ use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatC
 use transprompt::utils::llm::openai::ChatMsg;
 
 use crate::app::{AppEvents, GPTClient};
-use crate::chat::{ChatManager, LinkedChatHistory, MessageId};
+use crate::chat::{Chat, ChatManager, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
 
@@ -17,34 +17,60 @@ struct Request(String);
 
 #[inline]
 fn map_chat_messages(chat_msgs: &LinkedChatHistory,
-                     chat_manager: &UseSharedState<ChatManager>) -> Vec<ChatCompletionRequestMessage> {
-    let chat_manager = chat_manager.read();
+                     chat_manager: &ChatManager) -> Vec<ChatCompletionRequestMessage> {
     chat_msgs
         .iter()
         .map(|msg_id| chat_manager.get(msg_id).unwrap().msg.clone())
         .collect()
 }
 
+#[inline]
+fn push_history(global_mut: &mut RefMut<StoredStates>,
+                chat_idx: usize,
+                agent: &str,
+                msg_id: MessageId) {
+    global_mut
+        .chats
+        .get_mut(chat_idx)
+        .unwrap()
+        .agent_histories
+        .get_mut(agent)
+        .unwrap()
+        .push(msg_id);
+}
+
 
 async fn handle_request(mut rx: UnboundedReceiver<Request>,
-                        chat_manager_ref: UseSharedState<ChatManager>,
-                        history: UseRef<LinkedChatHistory>,
+                        chat_idx: usize,
+                        global: UseSharedState<StoredStates>,
                         gpt_client: UseSharedState<GPTClient>,
                         processing_flag: UseState<bool>) {
     while let Some(Request(request)) = rx.next().await {
         processing_flag.set(true);
         log::info!("request_handler {}", request);
-        let mut h = history.write();
-        h.push(chat_manager_ref.write().insert(user_msg(request.as_str(), None::<&str>)));
-        let request_msgs = map_chat_messages(&h, &chat_manager_ref);
-        // push an empty message for UI to show a message card
-        h.push(chat_manager_ref.write().insert(assistant_msg("", None::<&str>)));
-        drop(h);
+        let mut global_mut = global.write();
+        // create messages and register them to chat manager
+        let user_query = user_msg(request.as_str(), None::<&str>);
+        let user_msg_id = global_mut.chat_manager.insert(user_query.clone());
+        let assistant_reply_id = global_mut.chat_manager.insert(assistant_msg("", None::<&str>)); // an empty assistant message for UI to show a message card
+        // get assistant history to send to GPT
+        let mut messages_to_send = map_chat_messages(global_mut.chats[chat_idx].agent_histories.get("Assistant").unwrap(), &global_mut.chat_manager);
+        messages_to_send.push(user_query.msg);
+        // update history, inserting user request
+        push_history(&mut global_mut, chat_idx, "Assistant", user_msg_id);
+        push_history(&mut global_mut, chat_idx, "User", user_msg_id);
+        // stage user request into local storage
+        global_mut.save();
+        // update history, inserting assistant reply
+        push_history(&mut global_mut, chat_idx, "Assistant", assistant_reply_id);
+        push_history(&mut global_mut, chat_idx, "User", assistant_reply_id);
+        // drop write lock before await point
+        drop(global_mut);
         let mut stream = gpt_client.read()
             .chat()
             .create_stream(CreateChatCompletionRequestArgs::default()
                 .model("gpt-3.5-turbo-0613")
-                .messages(request_msgs)
+                .messages(messages_to_send)
                 .build()
                 .expect("creating request failed")
             )
@@ -57,52 +83,53 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
                         // azure openai service returns empty response on first call
                         continue;
                     }
-                    let last_msg_id = history.read().last().unwrap().clone();
-                    chat_manager_ref
-                        .write()
-                        .get_mut(&last_msg_id)
-                        .unwrap()
-                        .merge_delta(&response.choices[0].delta);
+                    let mut global_mut = global.write();
+                    let assistant_reply_msg = global_mut
+                        .chat_manager
+                        .get_mut(&assistant_reply_id)
+                        .unwrap();
+                    assistant_reply_msg.merge_delta(&response.choices[0].delta);
                 }
                 Err(e) => log::error!("OpenAI Error: {:?}", e),
             }
         }
+        // stage assistant reply into local storage
+        global.read().save();
         processing_flag.set(false);
     }
     log::error!("request_handler exited");
 }
 
 #[inline_props]
-pub fn ChatContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
-    let mut chat_manager = ChatManager::new();
-    let history = history.into_iter().map(|msg| {
-        let id = chat_manager.insert(msg.clone());
-        id
-    }).collect::<LinkedChatHistory>();
-    use_shared_state_provider(cx, || chat_manager);
-
-    let history = use_ref(cx, || history.clone());
+pub fn ChatContainer(cx: Scope, chat_idx: usize) -> Element {
+    let stored_states = use_shared_state::<StoredStates>(cx).unwrap();
     let request_processing = use_state(cx, || false);
-
     let gpt_client = use_shared_state::<GPTClient>(cx).unwrap();
-    let chat_manager = use_shared_state::<ChatManager>(cx).unwrap();
-
     // request handler
     use_coroutine(cx, |rx|
-        handle_request(rx, chat_manager.to_owned(), history.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
+        handle_request(rx, *chat_idx, stored_states.to_owned(), gpt_client.to_owned(), request_processing.to_owned()),
     );
+    // get data
+    let stored_states = stored_states.read();
+    let chat_manager = &stored_states.chat_manager;
+    let chat: &Chat = stored_states.chats.get(*chat_idx).unwrap();
+    let history = chat.agent_histories.get("User").unwrap();
+
     render! {
         div {
             class: "flex h-[100vh] w-full flex-col",
             div {
                 class: "flex-1 space-y-6 overflow-y-auto bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
-                history.read().iter().map(
-                    |msg| rsx!{
+                history
+                .iter()
+                .map(|msg_id| {
+                    let msg = chat_manager.get(msg_id).unwrap();
+                    rsx! {
                         MessageCard {
-                            chat_msg_id: msg.clone()
+                            chat_msg: msg.clone()
                         }
                     }
-                )
+                })
                 ChatMessageInput {
                     disable_submit: *request_processing.get()
                 }
@@ -112,10 +139,13 @@ pub fn ChatContainer(cx: Scope, history: Vec<ChatMsg>) -> Element {
 }
 
 
-#[inline_props]
-pub fn MessageCard(cx: Scope, chat_msg_id: MessageId) -> Element {
-    let chat_manager = use_shared_state::<ChatManager>(cx).unwrap().read();
-    let chat_msg = chat_manager.get(&chat_msg_id).unwrap();
+#[derive(Props, PartialEq, Clone, Debug)]
+pub struct MessageCardProps {
+    chat_msg: ChatMsg,
+}
+
+pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
+    let chat_msg = &cx.props.chat_msg;
     let msg = chat_msg.msg.content.as_ref().unwrap();
     match chat_msg.msg.role {
         Role::System => render! {

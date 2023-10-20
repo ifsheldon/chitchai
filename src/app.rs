@@ -45,6 +45,7 @@ pub fn App(cx: Scope) -> Element {
             }
         }
     });
+    let last_chat_idx = global.read().chats.len() - 1;
     render! {
         div {
             class: "flex h-full w-full",
@@ -52,7 +53,7 @@ pub fn App(cx: Scope) -> Element {
             div {
                 class: "flex-grow overflow-auto",
                 ChatContainer {
-                    history: init_history,
+                    chat_idx: last_chat_idx,
                 }
             }
             div {
