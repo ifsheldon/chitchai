@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use gloo_storage::{LocalStorage, Storage};
 use serde::{Deserialize, Serialize};
 
-use crate::agents::{AgentConfig, AgentType};
+use crate::agents::AgentConfig;
+use crate::agents::AgentType::{Assistant, User};
 use crate::app::APP_NAME;
 use crate::chat::{Chat, ChatManager};
 use crate::utils::customization::Customization;
@@ -24,14 +25,14 @@ impl StoredStates {
             let sys_msg_id = chat_manager.insert(sys_msg("You are a helpful assistant"));
             let history = vec![sys_msg_id];
             let assistant = AgentConfig {
-                name: "Assistant".to_string(),
-                description: "Assistant".to_string(),
-                agent_type: AgentType::Assistant,
+                name: Assistant.str().to_string(),
+                description: Assistant.str().to_string(),
+                agent_type: Assistant,
             };
             let user = AgentConfig {
-                name: "User".to_string(),
-                description: "User".to_string(),
-                agent_type: AgentType::User,
+                name: User.str().to_string(),
+                description: User.str().to_string(),
+                agent_type: User,
             };
             let agent_histories = HashMap::from([
                 (assistant.name.clone(), history.clone()),

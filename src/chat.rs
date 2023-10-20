@@ -4,8 +4,10 @@ use serde::{Deserialize, Serialize};
 use transprompt::utils::llm::openai::ChatMsg;
 use uuid::Uuid;
 
-use crate::agents::AgentConfig;
+use crate::agents::{AgentConfig, AgentType};
 use crate::utils::datetime::DatetimeString;
+
+pub const DEFAULT_AGENT_TO_DISPLAY: &str = AgentType::User.str();
 
 pub type LinkedChatHistory = Vec<MessageId>;
 

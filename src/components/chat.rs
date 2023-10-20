@@ -7,8 +7,9 @@ use futures_util::stream::StreamExt;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs, Role};
 use transprompt::utils::llm::openai::ChatMsg;
 
+use crate::agents::AgentType::{Assistant, User};
 use crate::app::{AppEvents, GPTClient};
-use crate::chat::{Chat, ChatManager, LinkedChatHistory, MessageId};
+use crate::chat::{Chat, ChatManager, DEFAULT_AGENT_TO_DISPLAY, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
 
@@ -54,16 +55,16 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         let user_msg_id = global_mut.chat_manager.insert(user_query.clone());
         let assistant_reply_id = global_mut.chat_manager.insert(assistant_msg("", None::<&str>)); // an empty assistant message for UI to show a message card
         // get assistant history to send to GPT
-        let mut messages_to_send = map_chat_messages(global_mut.chats[chat_idx].agent_histories.get("Assistant").unwrap(), &global_mut.chat_manager);
+        let mut messages_to_send = map_chat_messages(global_mut.chats[chat_idx].agent_histories.get(Assistant.str()).unwrap(), &global_mut.chat_manager);
         messages_to_send.push(user_query.msg);
         // update history, inserting user request
-        push_history(&mut global_mut, chat_idx, "Assistant", user_msg_id);
-        push_history(&mut global_mut, chat_idx, "User", user_msg_id);
+        push_history(&mut global_mut, chat_idx, Assistant.str(), user_msg_id);
+        push_history(&mut global_mut, chat_idx, User.str(), user_msg_id);
         // stage user request into local storage
         global_mut.save();
         // update history, inserting assistant reply
-        push_history(&mut global_mut, chat_idx, "Assistant", assistant_reply_id);
-        push_history(&mut global_mut, chat_idx, "User", assistant_reply_id);
+        push_history(&mut global_mut, chat_idx, Assistant.str(), assistant_reply_id);
+        push_history(&mut global_mut, chat_idx, User.str(), assistant_reply_id);
         // drop write lock before await point
         drop(global_mut);
         let mut stream = gpt_client.read()
@@ -113,7 +114,7 @@ pub fn ChatContainer(cx: Scope, chat_idx: usize) -> Element {
     let stored_states = stored_states.read();
     let chat_manager = &stored_states.chat_manager;
     let chat: &Chat = stored_states.chats.get(*chat_idx).unwrap();
-    let history = chat.agent_histories.get("User").unwrap();
+    let history = chat.agent_histories.get(DEFAULT_AGENT_TO_DISPLAY).unwrap();
 
     render! {
         div {

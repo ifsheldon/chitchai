@@ -7,6 +7,16 @@ pub enum AgentType {
     Assistant,
 }
 
+
+impl AgentType {
+    pub const fn str(&self) -> &'static str {
+        match self {
+            AgentType::User => "User",
+            AgentType::Assistant => "Assistant",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AgentConfig {
     pub name: String,
