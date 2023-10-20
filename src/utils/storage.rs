@@ -78,13 +78,3 @@ fn get_or_init_local_storage<T, F>(key: &str, default: F) -> T
         }
     }
 }
-
-
-impl Drop for StoredStates {
-    fn drop(&mut self) {
-        match LocalStorage::set(APP_NAME, self) {
-            Ok(_) => log::info!("Dropping and saved StoredStates"),
-            Err(e) => log::error!("Error saving when dropping StoredStates: {}", e),
-        }
-    }
-}
