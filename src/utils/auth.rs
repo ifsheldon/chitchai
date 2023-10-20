@@ -19,12 +19,6 @@ pub enum Auth {
     },
 }
 
-impl Default for Auth {
-    fn default() -> Self {
-        // TODO: fix this
-        serde_json::from_str(include_str!("temp_auth.json")).unwrap()
-    }
-}
 
 impl Into<AzureConfig> for Auth {
     fn into(self) -> AzureConfig {
