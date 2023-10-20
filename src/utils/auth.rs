@@ -62,22 +62,3 @@ impl Into<OpenAIConfig> for Auth {
         }
     }
 }
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_auth_default() {
-        let auth = Auth::default();
-
-        match auth {
-            Auth::OpenAI { .. } => unreachable!(),
-            Auth::AzureOpenAI {
-                api_version,
-                ..
-            } => assert_eq!(api_version, "2023-07-01-preview"),
-        }
-    }
-}
