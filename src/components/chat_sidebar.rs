@@ -98,6 +98,7 @@ pub fn ChatHistorySidebar(cx: Scope) -> Element {
 
 #[inline_props]
 pub fn ChatHistoryItem(cx: Scope, idx: usize, title: String, date: String) -> Element {
+    // TODO: add click event
     render! {
         button {
             class: "flex w-full flex-col gap-y-2 rounded-lg px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:hover:bg-slate-800",
