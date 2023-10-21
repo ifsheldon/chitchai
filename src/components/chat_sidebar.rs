@@ -50,16 +50,28 @@ pub fn ChatSidebar(cx: Scope) -> Element {
     }
 }
 
+pub struct NowActive(pub Option<usize>);
+
 pub fn IconSidebar(cx: Scope) -> Element {
+    let now_active = use_state(cx, || NowActive(None));
     render! {
         div {
             class: "flex h-screen w-12 flex-col items-center space-y-8 border-r border-slate-300 bg-slate-50 py-8 dark:border-slate-700 dark:bg-slate-900 sm:w-16",
-            Logo(cx),
-            NewConversationButton(cx),
-            ConversationListButton(cx),
-            DiscoverButton(cx),
-            UserProfileButton(cx),
-            SettingsButton(cx),
+            Logo {},
+            NewConversationButton {},
+            ConversationListButton {
+                preemption: Some(now_active.to_owned()),
+                idx: 0,
+            },
+            DiscoverButton {
+                preemption: Some(now_active.to_owned()),
+                idx: 1,
+            },
+            UserProfileButton {
+                preemption: Some(now_active.to_owned()),
+                idx: 2,
+            },
+            SettingsButton {},
         }
     }
 }
@@ -133,13 +145,60 @@ pub fn Logo(cx: Scope) -> Element {
     }
 }
 
-pub fn NewConversationButton(cx: Scope) -> Element {
-    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+
+#[derive(PartialEq, Props, Clone)]
+pub struct ButtonProps {
+    #[props(! optional)]
+    preemption: Option<UseState<NowActive>>,
+    idx: usize,
+}
+
+#[derive(Props)]
+pub struct RawButtonProps<'a> {
+    button_props: Option<&'a ButtonProps>,
+    on_click: EventHandler<'a, MouseEvent>,
+    children: Element<'a>,
+}
+
+pub fn RawButton<'a>(cx: Scope<'a, RawButtonProps<'a>>) -> Element<'a> {
+    const BUTTON_INACTIVE_STYLE: &str = "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800";
+    const BUTTON_ACTIVE_STYLE: &str = "rounded-lg bg-blue-100 p-1.5 text-blue-600 transition-colors duration-200 dark:bg-slate-800 dark:text-blue-600";
+    let preemptive = cx.props.button_props
+        .is_some_and(|p|
+            p.preemption.is_some());
+    let active = cx.props.button_props
+        .is_some_and(|p|
+            p.preemption
+                .as_ref()
+                .is_some_and(|s|
+                    s.get().0
+                        .is_some_and(|i| i == p.idx)));
     render! {
         a {
             href: "#",
-            class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
-            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::NewChat),
+            class: if preemptive && active {BUTTON_ACTIVE_STYLE} else {BUTTON_INACTIVE_STYLE},
+            onclick: move |event| {
+                cx.props.on_click.call(event);
+                if preemptive {
+                    let button_props = cx.props.button_props.unwrap();
+                    let preemption = button_props.preemption.as_ref().unwrap();
+                    if active {
+                        preemption.set(NowActive(None));
+                    } else {
+                        preemption.set(NowActive(Some(button_props.idx)));
+                    };
+                }
+            },
+            &cx.props.children
+        }
+    }
+}
+
+pub fn NewConversationButton(cx: Scope) -> Element {
+    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+    render! {
+        RawButton {
+            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::NewChat),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -174,13 +233,13 @@ pub fn NewConversationButton(cx: Scope) -> Element {
     }
 }
 
-pub fn ConversationListButton(cx: Scope) -> Element {
+pub fn ConversationListButton(cx: Scope<ButtonProps>) -> Element {
     let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+    // FIXME: keep the button sync with the chat history sidebar
     render! {
-        a {
-            href: "#",
-            class: "rounded-lg bg-blue-100 p-1.5 text-blue-600 transition-colors duration-200 dark:bg-slate-800 dark:text-blue-600",
-            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::ToggleChatHistory),
+        RawButton {
+            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::ToggleChatHistory),
+            button_props: &cx.props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -206,13 +265,13 @@ pub fn ConversationListButton(cx: Scope) -> Element {
     }
 }
 
-pub fn DiscoverButton(cx: Scope) -> Element {
+
+pub fn DiscoverButton(cx: Scope<ButtonProps>) -> Element {
     let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
     render! {
-        a {
-            href: "#",
-            class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
-            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterDiscovery),
+        RawButton {
+            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterDiscovery),
+            button_props: &cx.props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -238,13 +297,13 @@ pub fn DiscoverButton(cx: Scope) -> Element {
     }
 }
 
-pub fn UserProfileButton(cx: Scope) -> Element {
+
+pub fn UserProfileButton(cx: Scope<ButtonProps>) -> Element {
     let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
     render! {
-        a {
-            href: "#",
-            class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
-            onclick: |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterUserProfile),
+        RawButton {
+            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterUserProfile),
+            button_props: &cx.props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -276,10 +335,8 @@ pub fn UserProfileButton(cx: Scope) -> Element {
 pub fn SettingsButton(cx: Scope) -> Element {
     let app_event_handler = use_coroutine_handle::<AppEvents>(cx).unwrap();
     render! {
-        a {
-            href: "#",
-            class: "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800",
-            onclick: |_| app_event_handler.send(AppEvents::ToggleSettingsSidebar),
+        RawButton {
+            on_click: |_| app_event_handler.send(AppEvents::ToggleSettingsSidebar),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
