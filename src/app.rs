@@ -9,13 +9,7 @@ use crate::utils::storage::StoredStates;
 
 pub const APP_NAME: &str = "chitchai";
 
-#[derive(Debug, Clone)]
-pub enum GPTClient {
-    Azure(Client<AzureConfig>),
-    OpenAI(Client<OpenAIConfig>),
-}
-
-pub type AuthedClient = Option<GPTClient>;
+pub type AuthedClient = Option<Client>;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,8 +29,8 @@ pub fn App(cx: Scope<AppProps>) -> Element {
         .as_ref()
         .map(|auth| {
             match auth {
-                Auth::OpenAI { .. } => GPTClient::OpenAI(Client::with_config(auth.clone().into())),
-                Auth::AzureOpenAI { .. } => GPTClient::Azure(Client::with_config(auth.clone().into())),
+                Auth::OpenAI { .. } => Client::with_config::<OpenAIConfig>(auth.clone().into()),
+                Auth::AzureOpenAI { .. } => Client::with_config::<AzureConfig>(auth.clone().into()),
                 _ => unreachable!(),
             }
         });

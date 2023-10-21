@@ -8,7 +8,7 @@ use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatC
 use transprompt::utils::llm::openai::ChatMsg;
 
 use crate::agents::AgentType::{Assistant, User};
-use crate::app::{AuthedClient, GPTClient};
+use crate::app::AuthedClient;
 use crate::chat::{Chat, ChatManager, DEFAULT_AGENT_TO_DISPLAY, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
@@ -72,26 +72,18 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         push_history(&mut global_mut, chat_idx, User.str(), assistant_reply_id);
         // drop write lock before await point
         drop(global_mut);
-        let mut stream = match authed_client.read().as_ref().unwrap() {
-            GPTClient::Azure(client) => client.chat()
-                .create_stream(CreateChatCompletionRequestArgs::default()
-                    .model("gpt-3.5-turbo-0613")
-                    .messages(messages_to_send)
-                    .build()
-                    .expect("creating request failed")
-                )
-                .await
-                .expect("creating stream failed"),
-            GPTClient::OpenAI(client) => client.chat()
-                .create_stream(CreateChatCompletionRequestArgs::default()
-                    .model("gpt-3.5-turbo-0613")
-                    .messages(messages_to_send)
-                    .build()
-                    .expect("creating request failed")
-                )
-                .await
-                .expect("creating stream failed"),
-        };
+        let mut stream = authed_client
+            .read()
+            .as_ref()
+            .unwrap()
+            .chat()
+            .create_stream(CreateChatCompletionRequestArgs::default()
+                .model("gpt-3.5-turbo-0613")
+                .messages(messages_to_send)
+                .build()
+                .expect("creating request failed"))
+            .await
+            .expect("creating stream failed");
         while let Some(chunk) = stream.next().await {
             match chunk {
                 Ok(response) => {

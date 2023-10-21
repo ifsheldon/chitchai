@@ -1,8 +1,9 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 use transprompt::async_openai::Client;
+use transprompt::async_openai::config::{AzureConfig, OpenAIConfig};
 
-use crate::app::{AppEvents, AuthedClient, GPTClient};
+use crate::app::{AppEvents, AuthedClient};
 use crate::utils::auth::Auth;
 use crate::utils::settings::{GPTService, OpenAIModel};
 use crate::utils::storage::StoredStates;
@@ -87,7 +88,7 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
                             }
                         }
                         // save configs
-                        let (new_auth, new_authed_client): (Auth, GPTClient) = match gpt_service {
+                        let (new_auth, new_authed_client): (Auth, Client) = match gpt_service {
                             GPTService::AzureOpenAI => {
                                 let auth = Auth::AzureOpenAI {
                                     api_version: service_settings.api_version.to_owned().unwrap(),
@@ -95,7 +96,7 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
                                     api_base: service_settings.api_base.to_owned().unwrap(),
                                     api_key: service_settings.api_key.to_owned().unwrap(),
                                 };
-                                let client = GPTClient::Azure(Client::with_config(auth.clone().into()));
+                                let client = Client::with_config::<AzureConfig>(auth.clone().into());
                                 (auth, client)
                             }
                             GPTService::OpenAI => {
@@ -104,7 +105,7 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
                                     org_id: service_settings.org_id.to_owned(),
                                     api_base: service_settings.api_base.to_owned(),
                                 };
-                                let client = GPTClient::OpenAI(Client::with_config(auth.clone().into()));
+                                let client = Client::with_config::<OpenAIConfig>(auth.clone().into());
                                 (auth, client)
                             }
                         };
