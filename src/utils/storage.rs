@@ -48,16 +48,20 @@ impl StoredStates {
                 (user.name.clone(), user),
             ]);
             let default_chat = Chat {
-                topic: "Default".to_string(),
+                topic: "Chat1".to_string(),
                 date: Default::default(),
                 agent_histories,
                 agents,
+            };
+            let default_chat2 = Chat {
+                topic: "Chat2".to_string(),
+                ..default_chat.clone()
             };
             Self {
                 run_count: 0,
                 customization: Default::default(),
                 chat_manager,
-                chats: vec![default_chat],
+                chats: vec![default_chat, default_chat2],
                 auth: None,
                 selected_service: None,
             }
