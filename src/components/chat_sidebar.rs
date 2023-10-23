@@ -28,9 +28,12 @@ async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>,
             ChatSidebarEvent::NewChat => {
                 let mut global = global.write();
                 let new_chat = Chat::default(&global.chat_manager);
+                let new_chat_id = new_chat.id;
                 global.chats.push(new_chat);
                 global.save();
-                log::info!("NewChat");
+                if !streaming_reply.read().0 {
+                    showing_chat_id.write().0 = new_chat_id;
+                }
             }
             ChatSidebarEvent::EnterDiscovery => {
                 // TODO: implement entering discovery
