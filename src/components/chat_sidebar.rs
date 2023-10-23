@@ -3,6 +3,7 @@ use futures_util::StreamExt;
 use uuid::Uuid;
 
 use crate::app::{AppEvents, ChatId, StreamingReply};
+use crate::chat::Chat;
 use crate::utils::datetime::DatetimeString;
 use crate::utils::storage::StoredStates;
 
@@ -19,12 +20,16 @@ pub enum ChatSidebarEvent {
 async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>,
                        show_chat: UseState<bool>,
                        showing_chat_id: UseSharedState<ChatId>,
-                       streaming_reply: UseSharedState<StreamingReply>) {
+                       streaming_reply: UseSharedState<StreamingReply>,
+                       global: UseSharedState<StoredStates>) {
     while let Some(event) = rx.next().await {
         match event {
             ChatSidebarEvent::ToggleChatHistory => show_chat.modify(|s| !(*s)),
             ChatSidebarEvent::NewChat => {
-                // TODO: implement adding a new chat
+                let mut global = global.write();
+                let new_chat = Chat::default(&global.chat_manager);
+                global.chats.push(new_chat);
+                global.save();
                 log::info!("NewChat");
             }
             ChatSidebarEvent::EnterDiscovery => {
@@ -50,7 +55,8 @@ pub fn ChatSidebar(cx: Scope) -> Element {
     let show_chat_history = use_state(cx, || false);
     let showing_chat_id = use_shared_state::<ChatId>(cx).unwrap();
     let streaming_reply = use_shared_state::<StreamingReply>(cx).unwrap();
-    use_coroutine(cx, |rx| event_handler(rx, show_chat_history.to_owned(), showing_chat_id.to_owned(), streaming_reply.to_owned()));
+    let global = use_shared_state::<StoredStates>(cx).unwrap();
+    use_coroutine(cx, |rx| event_handler(rx, show_chat_history.to_owned(), showing_chat_id.to_owned(), streaming_reply.to_owned(), global.to_owned()));
     render! {
         aside {
             class: "flex",

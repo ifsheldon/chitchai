@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::agents::{AgentConfig, AgentType};
 use crate::utils::datetime::DatetimeString;
+use crate::utils::sys_msg;
 
 pub const DEFAULT_AGENT_TO_DISPLAY: &str = AgentType::User.str();
 
@@ -14,9 +15,16 @@ pub type LinkedChatHistory = Vec<MessageId>;
 #[derive(Clone, Copy, Hash, PartialEq, Debug, Eq, Serialize, Deserialize)]
 pub struct MessageId(Uuid);
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ChatManager {
     messages: HashMap<MessageId, ChatMsg>,
+    default_sys_prompt_id: MessageId,
+}
+
+impl Default for ChatManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -31,14 +39,41 @@ pub struct Chat {
 }
 
 impl Chat {
-    pub fn new(topic: String, data: DatetimeString, agent_histories: HashMap<String, LinkedChatHistory>, agents: HashMap<String, AgentConfig>) -> Self {
+    pub fn new(topic: String,
+               date: DatetimeString,
+               agent_histories: HashMap<String, LinkedChatHistory>,
+               agents: HashMap<String, AgentConfig>) -> Self {
         Self {
             id: Uuid::new_v4(),
             topic,
-            date: data,
+            date,
             agent_histories,
             agents,
         }
+    }
+
+    pub fn default(chat_manager: &ChatManager) -> Self {
+        let sys_msg_id = chat_manager.default_sys_prompt_id();
+        let history = vec![sys_msg_id];
+        let assistant = AgentConfig {
+            name: AgentType::Assistant.str().to_string(),
+            description: AgentType::Assistant.str().to_string(),
+            agent_type: AgentType::Assistant,
+        };
+        let user = AgentConfig {
+            name: AgentType::User.str().to_string(),
+            description: AgentType::User.str().to_string(),
+            agent_type: AgentType::User,
+        };
+        let agent_histories = HashMap::from([
+            (assistant.name.clone(), history.clone()),
+            (user.name.clone(), history),
+        ]);
+        let agents = HashMap::from([
+            (assistant.name.clone(), assistant),
+            (user.name.clone(), user),
+        ]);
+        Self::new("New Chat".to_string(), Default::default(), agent_histories, agents)
     }
 }
 
@@ -56,9 +91,17 @@ impl Clone for Chat {
 
 impl ChatManager {
     pub fn new() -> Self {
+        let default_sys_prompt = sys_msg("You are a helpful assistant");
+        let default_sys_prompt_id = MessageId(Uuid::new_v4());
+        let messages = HashMap::from([(default_sys_prompt_id, default_sys_prompt)]);
         Self {
-            messages: HashMap::new(),
+            messages,
+            default_sys_prompt_id,
         }
+    }
+
+    pub fn default_sys_prompt_id(&self) -> MessageId {
+        self.default_sys_prompt_id
     }
 
     pub fn insert(&mut self, msg: ChatMsg) -> MessageId {

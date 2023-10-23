@@ -1,16 +1,11 @@
-use std::collections::HashMap;
-
 use gloo_storage::{LocalStorage, Storage};
 use serde::{Deserialize, Serialize};
 
-use crate::agents::AgentConfig;
-use crate::agents::AgentType::{Assistant, User};
 use crate::app::APP_NAME;
 use crate::chat::{Chat, ChatManager};
 use crate::utils::auth::Auth;
 use crate::utils::customization::Customization;
 use crate::utils::settings::GPTService;
-use crate::utils::sys_msg;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct StoredStates {
@@ -26,33 +21,11 @@ pub struct StoredStates {
 impl StoredStates {
     pub fn get_or_init() -> Self {
         get_or_init_local_storage(APP_NAME, || {
-            let mut chat_manager = ChatManager::new();
-            let sys_msg_id = chat_manager.insert(sys_msg("You are a helpful assistant"));
-            let history = vec![sys_msg_id];
-            let assistant = AgentConfig {
-                name: Assistant.str().to_string(),
-                description: Assistant.str().to_string(),
-                agent_type: Assistant,
-            };
-            let user = AgentConfig {
-                name: User.str().to_string(),
-                description: User.str().to_string(),
-                agent_type: User,
-            };
-            let agent_histories = HashMap::from([
-                (assistant.name.clone(), history.clone()),
-                (user.name.clone(), history.clone()),
-            ]);
-            let agents = HashMap::from([
-                (assistant.name.clone(), assistant),
-                (user.name.clone(), user),
-            ]);
-            let default_chat = Chat::new("Chat1".to_string(),
-                                         Default::default(),
-                                         agent_histories,
-                                         agents);
-            let mut default_chat2 = default_chat.clone();
-            default_chat2.topic = "Chat2".to_string();
+            let chat_manager = ChatManager::new();
+            let mut default_chat = Chat::default(&chat_manager);
+            default_chat.topic = "Default Chat".to_string();
+            let mut default_chat2 = Chat::default(&chat_manager);
+            default_chat2.topic = "Default Chat 2".to_string();
             Self {
                 run_count: 0,
                 customization: Default::default(),
