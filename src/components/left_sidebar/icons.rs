@@ -1,77 +1,7 @@
 use dioxus::prelude::*;
-use futures_util::StreamExt;
-use uuid::Uuid;
 
-use crate::app::{AppEvents, ChatId, StreamingReply};
-use crate::chat::Chat;
-use crate::utils::datetime::DatetimeString;
-use crate::utils::storage::StoredStates;
-
-#[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ChatSidebarEvent {
-    ToggleChatHistory,
-    ChangeChat(Uuid),
-    NewChat,
-    EnterDiscovery,
-    EnterUserProfile,
-}
-
-async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>,
-                       show_chat: UseState<bool>,
-                       showing_chat_id: UseSharedState<ChatId>,
-                       streaming_reply: UseSharedState<StreamingReply>,
-                       global: UseSharedState<StoredStates>) {
-    while let Some(event) = rx.next().await {
-        match event {
-            ChatSidebarEvent::ToggleChatHistory => show_chat.modify(|s| !(*s)),
-            ChatSidebarEvent::NewChat => {
-                let mut global = global.write();
-                let new_chat = Chat::default(&global.chat_manager);
-                let new_chat_id = new_chat.id;
-                global.chats.push(new_chat);
-                global.save();
-                if !streaming_reply.read().0 {
-                    showing_chat_id.write().0 = new_chat_id;
-                }
-            }
-            ChatSidebarEvent::EnterDiscovery => {
-                // TODO: implement entering discovery
-                log::info!("EnterDiscovery");
-            }
-            ChatSidebarEvent::EnterUserProfile => {
-                // TODO: implement entering user profile
-                log::info!("EnterUserProfile");
-            }
-            ChatSidebarEvent::ChangeChat(chat_id) => {
-                if (!streaming_reply.read().0) && showing_chat_id.read().0 != chat_id {
-                    log::info!("Changing to Chat {}", chat_id);
-                    showing_chat_id.write().0 = chat_id;
-                }
-            }
-            _ => log::warn!("Unknown event: {:?}", event),
-        }
-    }
-}
-
-pub fn ChatSidebar(cx: Scope) -> Element {
-    let show_chat_history = use_state(cx, || false);
-    let showing_chat_id = use_shared_state::<ChatId>(cx).unwrap();
-    let streaming_reply = use_shared_state::<StreamingReply>(cx).unwrap();
-    let global = use_shared_state::<StoredStates>(cx).unwrap();
-    use_coroutine(cx, |rx| event_handler(rx, show_chat_history.to_owned(), showing_chat_id.to_owned(), streaming_reply.to_owned(), global.to_owned()));
-    render! {
-        aside {
-            class: "flex",
-            IconSidebar {}
-            if *show_chat_history.get() {
-                rsx! {
-                    ChatHistorySidebar {}
-                }
-            }
-        }
-    }
-}
+use crate::app::AppEvents;
+use crate::components::LeftSidebarEvent;
 
 pub struct NowActive(pub Option<usize>);
 
@@ -99,72 +29,6 @@ pub fn IconSidebar(cx: Scope) -> Element {
     }
 }
 
-pub fn ChatHistorySidebar(cx: Scope) -> Element {
-    let chat_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
-    let chats: Vec<(String, DatetimeString, Uuid)> = use_shared_state::<StoredStates>(cx)
-        .unwrap()
-        .read()
-        .chats
-        .iter()
-        .map(|c| (c.topic.clone(), c.date.clone(), c.id))
-        .collect();
-
-    render! {
-        div {
-            class: "h-screen w-52 overflow-y-auto bg-slate-50 py-8 dark:bg-slate-900 sm:w-60",
-            div {
-                class: "flex items-start",
-                h2 {
-                    class: "inline px-5 text-lg font-medium text-slate-800 dark:text-slate-200",
-                    "Chats"
-                }
-                span {
-                    class: "rounded-full bg-blue-600 px-2 py-1 text-xs text-slate-200",
-                    "{chats.len()}"
-                }
-            }
-            div {
-                class: "mx-2 mt-8 space-y-4",
-                // chat list
-                chats.into_iter().rev().map(|(title, date, id)| rsx!{
-                    ChatHistoryItem {
-                        on_click: move |_| {
-                            chat_event_handler.send(ChatSidebarEvent::ChangeChat(id))
-                        },
-                        title: title,
-                        date: date.0,
-                    }
-                })
-            }
-        }
-    }
-}
-
-#[derive(Props)]
-pub struct ChatHistoryItemProps<'a> {
-    pub title: String,
-    pub date: String,
-    pub on_click: EventHandler<'a, MouseEvent>,
-}
-
-pub fn ChatHistoryItem<'a>(cx: Scope<'a, ChatHistoryItemProps>) -> Element<'a> {
-    render! {
-        button {
-            onclick: |event| {
-                cx.props.on_click.call(event);
-            },
-            class: "flex w-full flex-col gap-y-2 rounded-lg px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:hover:bg-slate-800",
-            h1 {
-                class: "text-sm font-medium capitalize text-slate-700 dark:text-slate-200",
-                "{cx.props.title}"
-            }
-            p {
-                class: "text-xs text-slate-500 dark:text-slate-400",
-                "{cx.props.date}"
-            }
-        }
-    }
-}
 
 pub fn Logo(cx: Scope) -> Element {
     render! {
@@ -235,10 +99,10 @@ pub fn RawButton<'a>(cx: Scope<'a, RawButtonProps<'a>>) -> Element<'a> {
 }
 
 pub fn NewConversationButton(cx: Scope) -> Element {
-    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
     render! {
         RawButton {
-            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::NewChat),
+            on_click: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::NewChat),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -274,11 +138,11 @@ pub fn NewConversationButton(cx: Scope) -> Element {
 }
 
 pub fn ConversationListButton(cx: Scope<ButtonProps>) -> Element {
-    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
     // FIXME: keep the button sync with the chat history sidebar
     render! {
         RawButton {
-            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::ToggleChatHistory),
+            on_click: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::ToggleChatHistory),
             button_props: &cx.props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
@@ -307,10 +171,10 @@ pub fn ConversationListButton(cx: Scope<ButtonProps>) -> Element {
 
 
 pub fn DiscoverButton(cx: Scope<ButtonProps>) -> Element {
-    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
     render! {
         RawButton {
-            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterDiscovery),
+            on_click: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::EnterDiscovery),
             button_props: &cx.props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
@@ -339,10 +203,10 @@ pub fn DiscoverButton(cx: Scope<ButtonProps>) -> Element {
 
 
 pub fn UserProfileButton(cx: Scope<ButtonProps>) -> Element {
-    let chat_sidebar_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
     render! {
         RawButton {
-            on_click: move |_| chat_sidebar_event_handler.send(ChatSidebarEvent::EnterUserProfile),
+            on_click: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::EnterAgentProfile),
             button_props: &cx.props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",

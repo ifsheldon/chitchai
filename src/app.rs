@@ -4,7 +4,7 @@ use transprompt::async_openai::Client;
 use transprompt::async_openai::config::{AzureConfig, OpenAIConfig};
 use uuid::Uuid;
 
-use crate::components::{ChatContainer, ChatSidebar, SettingSidebar};
+use crate::components::{ChatContainer, LeftSidebar, SettingSidebar};
 use crate::utils::auth::Auth;
 use crate::utils::storage::StoredStates;
 
@@ -69,7 +69,7 @@ pub fn App(cx: Scope<AppProps>) -> Element {
     render! {
         div {
             class: "flex h-full w-full",
-            ChatSidebar {}
+            LeftSidebar {}
             div {
                 class: "flex-grow overflow-auto",
                 ChatContainer {}
