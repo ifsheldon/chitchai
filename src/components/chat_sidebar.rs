@@ -1,19 +1,24 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
+use uuid::Uuid;
 
-use crate::app::AppEvents;
+use crate::app::{AppEvents, ChatId};
+use crate::utils::datetime::DatetimeString;
 use crate::utils::storage::StoredStates;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChatSidebarEvent {
     ToggleChatHistory,
+    ChangeChat(Uuid),
     NewChat,
     EnterDiscovery,
     EnterUserProfile,
 }
 
-async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>, show_chat: UseState<bool>) {
+async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>,
+                       show_chat: UseState<bool>,
+                       showing_chat_id: UseSharedState<ChatId>) {
     while let Some(event) = rx.next().await {
         match event {
             ChatSidebarEvent::ToggleChatHistory => show_chat.modify(|s| !(*s)),
@@ -29,6 +34,11 @@ async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>, show_chat: U
                 // TODO: implement entering user profile
                 log::info!("EnterUserProfile");
             }
+            ChatSidebarEvent::ChangeChat(chat_id) => {
+                // TODO: disable switching when a reply stream is receiving
+                log::info!("Changing to Chat {}", chat_id);
+                showing_chat_id.write().0 = chat_id;
+            }
             _ => log::warn!("Unknown event: {:?}", event),
         }
     }
@@ -36,7 +46,8 @@ async fn event_handler(mut rx: UnboundedReceiver<ChatSidebarEvent>, show_chat: U
 
 pub fn ChatSidebar(cx: Scope) -> Element {
     let show_chat_history = use_state(cx, || false);
-    use_coroutine(cx, |rx| event_handler(rx, show_chat_history.to_owned()));
+    let showing_chat_id = use_shared_state::<ChatId>(cx).unwrap();
+    use_coroutine(cx, |rx| event_handler(rx, show_chat_history.to_owned(), showing_chat_id.to_owned()));
     render! {
         aside {
             class: "flex",
@@ -77,7 +88,14 @@ pub fn IconSidebar(cx: Scope) -> Element {
 }
 
 pub fn ChatHistorySidebar(cx: Scope) -> Element {
-    let chats = &use_shared_state::<StoredStates>(cx).unwrap().read().chats;
+    let chat_event_handler = use_coroutine_handle::<ChatSidebarEvent>(cx).unwrap();
+    let chats: Vec<(String, DatetimeString, Uuid)> = use_shared_state::<StoredStates>(cx)
+        .unwrap()
+        .read()
+        .chats
+        .iter()
+        .map(|c| (c.topic.clone(), c.date.clone(), c.id))
+        .collect();
 
     render! {
         div {
@@ -96,11 +114,13 @@ pub fn ChatHistorySidebar(cx: Scope) -> Element {
             div {
                 class: "mx-2 mt-8 space-y-4",
                 // chat list
-                chats.iter().enumerate().rev().map(|(idx,item)| rsx!{
+                chats.into_iter().rev().map(|(title, date, id)| rsx!{
                     ChatHistoryItem {
-                        idx: idx,
-                        title: item.topic.clone(),
-                        date: item.date.0.clone(),
+                        on_click: move |_| {
+                            chat_event_handler.send(ChatSidebarEvent::ChangeChat(id))
+                        },
+                        title: title,
+                        date: date.0,
                     }
                 })
             }
@@ -108,19 +128,27 @@ pub fn ChatHistorySidebar(cx: Scope) -> Element {
     }
 }
 
-#[inline_props]
-pub fn ChatHistoryItem(cx: Scope, idx: usize, title: String, date: String) -> Element {
-    // TODO: add click event
+#[derive(Props)]
+pub struct ChatHistoryItemProps<'a> {
+    pub title: String,
+    pub date: String,
+    pub on_click: EventHandler<'a, MouseEvent>,
+}
+
+pub fn ChatHistoryItem<'a>(cx: Scope<'a, ChatHistoryItemProps>) -> Element<'a> {
     render! {
         button {
+            onclick: |event| {
+                cx.props.on_click.call(event);
+            },
             class: "flex w-full flex-col gap-y-2 rounded-lg px-3 py-2 text-left transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:hover:bg-slate-800",
             h1 {
                 class: "text-sm font-medium capitalize text-slate-700 dark:text-slate-200",
-                "{title}"
+                "{cx.props.title}"
             }
             p {
                 class: "text-xs text-slate-500 dark:text-slate-400",
-                "{date}"
+                "{cx.props.date}"
             }
         }
     }

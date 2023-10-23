@@ -19,12 +19,39 @@ pub struct ChatManager {
     messages: HashMap<MessageId, ChatMsg>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[readonly::make]
 pub struct Chat {
+    #[readonly]
+    pub id: Uuid,
     pub topic: String,
     pub date: DatetimeString,
     pub agent_histories: HashMap<String, LinkedChatHistory>,
     pub agents: HashMap<String, AgentConfig>,
+}
+
+impl Chat {
+    pub fn new(topic: String, data: DatetimeString, agent_histories: HashMap<String, LinkedChatHistory>, agents: HashMap<String, AgentConfig>) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            topic,
+            date: data,
+            agent_histories,
+            agents,
+        }
+    }
+}
+
+impl Clone for Chat {
+    fn clone(&self) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            topic: self.topic.clone(),
+            date: self.date.clone(),
+            agent_histories: self.agent_histories.clone(),
+            agents: self.agents.clone(),
+        }
+    }
 }
 
 impl ChatManager {

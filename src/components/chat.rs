@@ -6,6 +6,7 @@ use dioxus::prelude::*;
 use futures_util::stream::StreamExt;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs, Role};
 use transprompt::utils::llm::openai::ChatMsg;
+use uuid::Uuid;
 
 use crate::agents::AgentType::{Assistant, User};
 use crate::app::AuthedClient;
@@ -14,6 +15,15 @@ use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
 
 struct Request(String);
+
+fn find_chat_idx_by_id(chats: &Vec<Chat>, id: &Uuid) -> usize {
+    for (idx, c) in chats.iter().enumerate() {
+        if c.id.eq(id) {
+            return idx;
+        }
+    }
+    unreachable!("Cannot find a chat, should not be since deleting is not implemented yet")
+}
 
 
 #[inline]
@@ -26,14 +36,10 @@ fn map_chat_messages(chat_msgs: &LinkedChatHistory,
 }
 
 #[inline]
-fn push_history(global_mut: &mut RefMut<StoredStates>,
-                chat_idx: usize,
+fn push_history(chat: &mut Chat,
                 agent: &str,
                 msg_id: MessageId) {
-    global_mut
-        .chats
-        .get_mut(chat_idx)
-        .unwrap()
+    chat
         .agent_histories
         .get_mut(agent)
         .unwrap()
@@ -42,7 +48,7 @@ fn push_history(global_mut: &mut RefMut<StoredStates>,
 
 
 async fn handle_request(mut rx: UnboundedReceiver<Request>,
-                        chat_idx: usize,
+                        chat_id: Uuid,
                         global: UseSharedState<StoredStates>,
                         authed_client: UseSharedState<AuthedClient>,
                         processing_flag: UseState<bool>) {
@@ -55,21 +61,28 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         processing_flag.set(true);
         log::info!("request_handler {}", request);
         let mut global_mut = global.write();
+
         // create messages and register them to chat manager
         let user_query = user_msg(request.as_str(), None::<&str>);
         let user_msg_id = global_mut.chat_manager.insert(user_query.clone());
         let assistant_reply_id = global_mut.chat_manager.insert(assistant_msg("", None::<&str>)); // an empty assistant message for UI to show a message card
         // get assistant history to send to GPT
-        let mut messages_to_send = map_chat_messages(global_mut.chats[chat_idx].agent_histories.get(Assistant.str()).unwrap(), &global_mut.chat_manager);
+        let chat_idx = find_chat_idx_by_id(&global_mut.chats, &chat_id);
+        let chat = &global_mut.chats[chat_idx];
+        let mut messages_to_send = map_chat_messages(chat.agent_histories.get(Assistant.str()).unwrap(), &global_mut.chat_manager);
         messages_to_send.push(user_query.msg);
+
+        let chat = &mut global_mut.chats[chat_idx];
         // update history, inserting user request
-        push_history(&mut global_mut, chat_idx, Assistant.str(), user_msg_id);
-        push_history(&mut global_mut, chat_idx, User.str(), user_msg_id);
+        push_history(chat, Assistant.str(), user_msg_id);
+        push_history(chat, User.str(), user_msg_id);
         // stage user request into local storage
         global_mut.save();
+
+        let chat = &mut global_mut.chats[chat_idx];
         // update history, inserting assistant reply
-        push_history(&mut global_mut, chat_idx, Assistant.str(), assistant_reply_id);
-        push_history(&mut global_mut, chat_idx, User.str(), assistant_reply_id);
+        push_history(chat, Assistant.str(), assistant_reply_id);
+        push_history(chat, User.str(), assistant_reply_id);
         // drop write lock before await point
         drop(global_mut);
         let mut stream = authed_client
@@ -109,14 +122,14 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
 }
 
 #[inline_props]
-pub fn ChatContainer(cx: Scope, chat_idx: usize) -> Element {
+pub fn ChatContainer(cx: Scope, chat_id: Uuid) -> Element {
     let stored_states = use_shared_state::<StoredStates>(cx).unwrap();
-    let request_processing = use_state(cx, || false);
     let authed_client = use_shared_state::<AuthedClient>(cx).unwrap();
+    let request_processing = use_state(cx, || false);
     // request handler
     use_coroutine(cx, |rx|
         handle_request(rx,
-                       *chat_idx,
+                       *chat_id,
                        stored_states.to_owned(),
                        authed_client.to_owned(),
                        request_processing.to_owned()),
@@ -124,7 +137,8 @@ pub fn ChatContainer(cx: Scope, chat_idx: usize) -> Element {
     // get data
     let stored_states = stored_states.read();
     let chat_manager = &stored_states.chat_manager;
-    let chat: &Chat = stored_states.chats.get(*chat_idx).unwrap();
+    let chat_idx = find_chat_idx_by_id(&stored_states.chats, chat_id);
+    let chat: &Chat = &stored_states.chats[chat_idx];
     let history = chat.agent_histories.get(DEFAULT_AGENT_TO_DISPLAY).unwrap();
 
     render! {

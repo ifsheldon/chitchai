@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use futures_util::StreamExt;
 use transprompt::async_openai::Client;
 use transprompt::async_openai::config::{AzureConfig, OpenAIConfig};
+use uuid::Uuid;
 
 use crate::components::{ChatContainer, ChatSidebar, SettingSidebar};
 use crate::utils::auth::Auth;
@@ -10,6 +11,9 @@ use crate::utils::storage::StoredStates;
 pub const APP_NAME: &str = "chitchai";
 
 pub type AuthedClient = Option<Client>;
+
+pub struct ChatId(pub Uuid);
+
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +28,7 @@ pub struct AppProps {
 
 pub fn App(cx: Scope<AppProps>) -> Element {
     let stored_states = cx.props.stored_states.clone();
+    let last_chat_id = stored_states.chats.last().unwrap().id;
     let authed_client: AuthedClient = stored_states
         .auth
         .as_ref()
@@ -38,6 +43,7 @@ pub fn App(cx: Scope<AppProps>) -> Element {
     // configure share states
     use_shared_state_provider(cx, || stored_states);
     use_shared_state_provider(cx, || authed_client);
+    use_shared_state_provider(cx, || ChatId(last_chat_id));
     let global = use_shared_state::<StoredStates>(cx).unwrap();
     // configure local states
     let hide_setting_sidebar = use_state(cx, || hide_settings_sidebar);
@@ -55,7 +61,7 @@ pub fn App(cx: Scope<AppProps>) -> Element {
             }
         }
     });
-    let last_chat_idx = global.read().chats.len() - 1;
+    let chat_id = use_shared_state::<ChatId>(cx).unwrap();
     render! {
         div {
             class: "flex h-full w-full",
@@ -63,7 +69,7 @@ pub fn App(cx: Scope<AppProps>) -> Element {
             div {
                 class: "flex-grow overflow-auto",
                 ChatContainer {
-                    chat_idx: last_chat_idx,
+                    chat_id: chat_id.read().0,
                 }
             }
             div {
