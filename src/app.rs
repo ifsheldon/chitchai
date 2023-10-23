@@ -10,9 +10,12 @@ use crate::utils::storage::StoredStates;
 
 pub const APP_NAME: &str = "chitchai";
 
+// Global states
 pub type AuthedClient = Option<Client>;
 
 pub struct ChatId(pub Uuid);
+
+pub struct StreamingReply(pub bool);
 
 
 #[non_exhaustive]
@@ -44,7 +47,9 @@ pub fn App(cx: Scope<AppProps>) -> Element {
     use_shared_state_provider(cx, || stored_states);
     use_shared_state_provider(cx, || authed_client);
     use_shared_state_provider(cx, || ChatId(last_chat_id));
+    use_shared_state_provider(cx, || StreamingReply(false));
     let global = use_shared_state::<StoredStates>(cx).unwrap();
+    let chat_id = use_shared_state::<ChatId>(cx).unwrap();
     // configure local states
     let hide_setting_sidebar = use_state(cx, || hide_settings_sidebar);
     // configure event handler
@@ -61,16 +66,13 @@ pub fn App(cx: Scope<AppProps>) -> Element {
             }
         }
     });
-    let chat_id = use_shared_state::<ChatId>(cx).unwrap();
     render! {
         div {
             class: "flex h-full w-full",
             ChatSidebar {}
             div {
                 class: "flex-grow overflow-auto",
-                ChatContainer {
-                    chat_id: chat_id.read().0,
-                }
+                ChatContainer {}
             }
             div {
                 class: "w-1/6",

@@ -9,7 +9,7 @@ use transprompt::utils::llm::openai::ChatMsg;
 use uuid::Uuid;
 
 use crate::agents::AgentType::{Assistant, User};
-use crate::app::AuthedClient;
+use crate::app::{AuthedClient, ChatId, StreamingReply};
 use crate::chat::{Chat, ChatManager, DEFAULT_AGENT_TO_DISPLAY, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
@@ -48,17 +48,18 @@ fn push_history(chat: &mut Chat,
 
 
 async fn handle_request(mut rx: UnboundedReceiver<Request>,
-                        chat_id: Uuid,
+                        chat_id: UseSharedState<ChatId>,
                         global: UseSharedState<StoredStates>,
                         authed_client: UseSharedState<AuthedClient>,
-                        processing_flag: UseState<bool>) {
+                        streaming_reply: UseSharedState<StreamingReply>) {
     while let Some(Request(request)) = rx.next().await {
+        let chat_id = chat_id.read().0;
+        log::warn!("chat id = {}", chat_id);
         if authed_client.read().is_none() {
             // TODO: handle this error and make a toast to notify user
             log::error!("authed_client is None");
             continue;
         }
-        processing_flag.set(true);
         log::info!("request_handler {}", request);
         let mut global_mut = global.write();
 
@@ -97,6 +98,7 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
                 .expect("creating request failed"))
             .await
             .expect("creating stream failed");
+        streaming_reply.write().0 = true;
         while let Some(chunk) = stream.next().await {
             match chunk {
                 Ok(response) => {
@@ -116,28 +118,28 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         }
         // stage assistant reply into local storage
         global.read().save();
-        processing_flag.set(false);
+        streaming_reply.write().0 = false;
     }
     log::error!("request_handler exited");
 }
 
-#[inline_props]
-pub fn ChatContainer(cx: Scope, chat_id: Uuid) -> Element {
+pub fn ChatContainer(cx: Scope) -> Element {
     let stored_states = use_shared_state::<StoredStates>(cx).unwrap();
     let authed_client = use_shared_state::<AuthedClient>(cx).unwrap();
-    let request_processing = use_state(cx, || false);
+    let streaming_reply = use_shared_state::<StreamingReply>(cx).unwrap();
+    let chat_id = use_shared_state::<ChatId>(cx).unwrap();
     // request handler
     use_coroutine(cx, |rx|
         handle_request(rx,
-                       *chat_id,
+                       chat_id.to_owned(),
                        stored_states.to_owned(),
                        authed_client.to_owned(),
-                       request_processing.to_owned()),
+                       streaming_reply.to_owned()),
     );
     // get data
     let stored_states = stored_states.read();
     let chat_manager = &stored_states.chat_manager;
-    let chat_idx = find_chat_idx_by_id(&stored_states.chats, chat_id);
+    let chat_idx = find_chat_idx_by_id(&stored_states.chats, &chat_id.read().0);
     let chat: &Chat = &stored_states.chats[chat_idx];
     let history = chat.agent_histories.get(DEFAULT_AGENT_TO_DISPLAY).unwrap();
 
@@ -157,7 +159,7 @@ pub fn ChatContainer(cx: Scope, chat_id: Uuid) -> Element {
                     }
                 })
                 ChatMessageInput {
-                    disable_submit: *request_processing.get()
+                    disable_submit: streaming_reply.read().0
                 }
             }
         }
