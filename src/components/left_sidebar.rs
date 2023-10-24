@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use futures_util::StreamExt;
 use uuid::Uuid;
 
+pub use agent_profiles::*;
 pub use chat_history::*;
 pub use icons::*;
 
@@ -11,6 +12,7 @@ use crate::utils::storage::StoredStates;
 
 pub mod chat_history;
 pub mod icons;
+pub mod agent_profiles;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,9 +52,7 @@ pub fn LeftSidebar(cx: Scope) -> Element {
                     ChatHistorySidebar {}
                 },
                 SecondarySidebar::Profile => rsx! {
-                    div {
-
-                    }
+                    AgentProfiles {}
                 },
                 SecondarySidebar::None => rsx! {
                     div {}
