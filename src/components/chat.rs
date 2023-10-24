@@ -46,6 +46,57 @@ fn push_history(chat: &mut Chat,
         .push(msg_id);
 }
 
+async fn post_agent_request(assistant_id: AgentId,
+                            user_agent_id: AgentId,
+                            chat_idx: usize,
+                            authed_client: UseSharedState<AuthedClient>,
+                            global: UseSharedState<StoredStates>) {
+    let mut global_mut = global.write();
+    let chat = &global_mut.chats[chat_idx];
+    // get the context to send to AI
+    let messages_to_send = map_chat_messages(chat.agent_histories.get(&assistant_id).as_ref().unwrap(), &global_mut.chat_manager);
+    // create an empty assistant message for UI to show a message card
+    let agent_name = chat.agents.get(&assistant_id).unwrap().name.clone();
+    let assistant_reply = assistant_msg("", agent_name);
+    let assistant_reply_id = global_mut.chat_manager.insert(assistant_reply);
+    // update history, inserting assistant reply that is empty for now
+    let chat = &mut global_mut.chats[chat_idx];
+    push_history(chat, &assistant_id, assistant_reply_id);
+    push_history(chat, &user_agent_id, assistant_reply_id);
+    // drop write lock before await point
+    drop(global_mut);
+    // send request, returning a stream
+    let mut stream = authed_client
+        .read()
+        .as_ref()
+        .unwrap()
+        .chat()
+        .create_stream(CreateChatCompletionRequestArgs::default()
+            .model("gpt-3.5-turbo-0613")
+            .messages(messages_to_send)
+            .build()
+            .expect("creating request failed"))
+        .await
+        .expect("creating stream failed");
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(response) => {
+                if response.choices.is_empty() {
+                    // azure openai service returns empty response on first call
+                    continue;
+                }
+                let mut global_mut = global.write();
+                let assistant_reply_msg = global_mut
+                    .chat_manager
+                    .get_mut(&assistant_reply_id)
+                    .unwrap();
+                assistant_reply_msg.merge_delta(&response.choices[0].delta);
+            }
+            Err(e) => log::error!("OpenAI Error: {:?}", e),
+        }
+    }
+}
+
 
 async fn handle_request(mut rx: UnboundedReceiver<Request>,
                         chat_id: UseSharedState<ChatId>,
@@ -81,50 +132,9 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         // drop write lock before await point
         drop(global_mut);
         streaming_reply.write().0 = true;
-        for assistant_id in assistant_agent_ids.iter() {
-            let mut global_mut = global.write();
-            let chat = &global_mut.chats[chat_idx];
-            let messages_to_send = map_chat_messages(chat.agent_histories.get(assistant_id).as_ref().unwrap(), &global_mut.chat_manager);
-            // create an empty assistant message for UI to show a message card
-            let agent_name = chat.agents.get(assistant_id).unwrap().name.clone();
-            let assistant_reply = assistant_msg("", agent_name);
-            let assistant_reply_id = global_mut.chat_manager.insert(assistant_reply);
-            // update history, inserting assistant reply
-            let chat = &mut global_mut.chats[chat_idx];
-            push_history(chat, assistant_id, assistant_reply_id);
-            push_history(chat, &user_agent_id, assistant_reply_id);
-            // drop write lock before await point
-            drop(global_mut);
-            // send request, returning a stream
-            let mut stream = authed_client
-                .read()
-                .as_ref()
-                .unwrap()
-                .chat()
-                .create_stream(CreateChatCompletionRequestArgs::default()
-                    .model("gpt-3.5-turbo-0613")
-                    .messages(messages_to_send)
-                    .build()
-                    .expect("creating request failed"))
-                .await
-                .expect("creating stream failed");
-            while let Some(chunk) = stream.next().await {
-                match chunk {
-                    Ok(response) => {
-                        if response.choices.is_empty() {
-                            // azure openai service returns empty response on first call
-                            continue;
-                        }
-                        let mut global_mut = global.write();
-                        let assistant_reply_msg = global_mut
-                            .chat_manager
-                            .get_mut(&assistant_reply_id)
-                            .unwrap();
-                        assistant_reply_msg.merge_delta(&response.choices[0].delta);
-                    }
-                    Err(e) => log::error!("OpenAI Error: {:?}", e),
-                }
-            }
+        for assistant_id in assistant_agent_ids.into_iter() {
+            // TODO: now each assistant has independent history, so they don't know the replies from other assistants. Need to update their histories after streaming is done.
+            post_agent_request(assistant_id, user_agent_id, chat_idx, authed_client.to_owned(), global.to_owned()).await;
         }
         // stage assistant reply into local storage
         global.read().save();
