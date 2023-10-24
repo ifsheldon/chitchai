@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -8,9 +9,9 @@ use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatC
 use transprompt::utils::llm::openai::ChatMsg;
 use uuid::Uuid;
 
-use crate::agents::AgentType::{Assistant, User};
+use crate::agents::AgentId;
 use crate::app::{AuthedClient, ChatId, StreamingReply};
-use crate::chat::{Chat, ChatManager, DEFAULT_AGENT_TO_DISPLAY, LinkedChatHistory, MessageId};
+use crate::chat::{Chat, ChatManager, LinkedChatHistory, MessageId};
 use crate::utils::{assistant_msg, user_msg};
 use crate::utils::storage::StoredStates;
 
@@ -37,11 +38,11 @@ fn map_chat_messages(chat_msgs: &LinkedChatHistory,
 
 #[inline]
 fn push_history(chat: &mut Chat,
-                agent: &str,
+                agent_id: &AgentId,
                 msg_id: MessageId) {
     chat
         .agent_histories
-        .get_mut(agent)
+        .get_mut(agent_id)
         .unwrap()
         .push(msg_id);
 }
@@ -62,58 +63,68 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         }
         log::info!("request_handler {}", request);
         let mut global_mut = global.write();
-
-        // create messages and register them to chat manager
-        let user_query = user_msg(request.as_str(), None::<&str>);
-        let user_msg_id = global_mut.chat_manager.insert(user_query.clone());
-        let assistant_reply_id = global_mut.chat_manager.insert(assistant_msg("", None::<&str>)); // an empty assistant message for UI to show a message card
-        // get assistant history to send to GPT
         let chat_idx = find_chat_idx_by_id(&global_mut.chats, &chat_id);
         let chat = &global_mut.chats[chat_idx];
-        let mut messages_to_send = map_chat_messages(chat.agent_histories.get(Assistant.str()).unwrap(), &global_mut.chat_manager);
-        messages_to_send.push(user_query.msg);
-
-        let chat = &mut global_mut.chats[chat_idx];
+        let user_agent_ids: Vec<AgentId> = chat.user_agent_ids();
+        assert_eq!(user_agent_ids.len(), 1, "user_agent_ids.len() == 1"); // TODO: support multiple user agents
+        let user_agent_id = user_agent_ids[0];
+        let assistant_agent_ids: Vec<AgentId> = chat.assistant_agent_ids();
+        // create user message and register them to chat manager
+        let user_query = user_msg(request.as_str(), None::<&str>);
+        let user_msg_id = global_mut.chat_manager.insert(user_query.clone());
         // update history, inserting user request
-        push_history(chat, Assistant.str(), user_msg_id);
-        push_history(chat, User.str(), user_msg_id);
-        // stage user request into local storage
+        global_mut
+            .chats[chat_idx]
+            .agent_histories
+            .iter_mut()
+            .for_each(|(_, history)| history.push(user_msg_id));
         global_mut.save();
-
-        let chat = &mut global_mut.chats[chat_idx];
-        // update history, inserting assistant reply
-        push_history(chat, Assistant.str(), assistant_reply_id);
-        push_history(chat, User.str(), assistant_reply_id);
         // drop write lock before await point
         drop(global_mut);
-        let mut stream = authed_client
-            .read()
-            .as_ref()
-            .unwrap()
-            .chat()
-            .create_stream(CreateChatCompletionRequestArgs::default()
-                .model("gpt-3.5-turbo-0613")
-                .messages(messages_to_send)
-                .build()
-                .expect("creating request failed"))
-            .await
-            .expect("creating stream failed");
         streaming_reply.write().0 = true;
-        while let Some(chunk) = stream.next().await {
-            match chunk {
-                Ok(response) => {
-                    if response.choices.is_empty() {
-                        // azure openai service returns empty response on first call
-                        continue;
+        for assistant_id in assistant_agent_ids.iter() {
+            let mut global_mut = global.write();
+            let chat = &global_mut.chats[chat_idx];
+            let messages_to_send = map_chat_messages(chat.agent_histories.get(assistant_id).as_ref().unwrap(), &global_mut.chat_manager);
+            // create an empty assistant message for UI to show a message card
+            let agent_name = chat.agents.get(assistant_id).unwrap().name.clone();
+            let assistant_reply = assistant_msg("", agent_name);
+            let assistant_reply_id = global_mut.chat_manager.insert(assistant_reply);
+            // update history, inserting assistant reply
+            let chat = &mut global_mut.chats[chat_idx];
+            push_history(chat, assistant_id, assistant_reply_id);
+            push_history(chat, &user_agent_id, assistant_reply_id);
+            // drop write lock before await point
+            drop(global_mut);
+            // send request, returning a stream
+            let mut stream = authed_client
+                .read()
+                .as_ref()
+                .unwrap()
+                .chat()
+                .create_stream(CreateChatCompletionRequestArgs::default()
+                    .model("gpt-3.5-turbo-0613")
+                    .messages(messages_to_send)
+                    .build()
+                    .expect("creating request failed"))
+                .await
+                .expect("creating stream failed");
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(response) => {
+                        if response.choices.is_empty() {
+                            // azure openai service returns empty response on first call
+                            continue;
+                        }
+                        let mut global_mut = global.write();
+                        let assistant_reply_msg = global_mut
+                            .chat_manager
+                            .get_mut(&assistant_reply_id)
+                            .unwrap();
+                        assistant_reply_msg.merge_delta(&response.choices[0].delta);
                     }
-                    let mut global_mut = global.write();
-                    let assistant_reply_msg = global_mut
-                        .chat_manager
-                        .get_mut(&assistant_reply_id)
-                        .unwrap();
-                    assistant_reply_msg.merge_delta(&response.choices[0].delta);
+                    Err(e) => log::error!("OpenAI Error: {:?}", e),
                 }
-                Err(e) => log::error!("OpenAI Error: {:?}", e),
             }
         }
         // stage assistant reply into local storage
@@ -141,7 +152,9 @@ pub fn ChatContainer(cx: Scope) -> Element {
     let chat_manager = &stored_states.chat_manager;
     let chat_idx = find_chat_idx_by_id(&stored_states.chats, &chat_id.read().0);
     let chat: &Chat = &stored_states.chats[chat_idx];
-    let history = chat.agent_histories.get(DEFAULT_AGENT_TO_DISPLAY).unwrap();
+    let user_agent_id: Vec<AgentId> = chat.user_agent_ids();
+    assert_eq!(user_agent_id.len(), 1, "user_agents.len() == 1");  // TODO: support multiple user agents
+    let history = chat.agent_histories.get(&user_agent_id[0]).unwrap();
 
     render! {
         div {
