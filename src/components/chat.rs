@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use async_std::task::sleep;
 use dioxus::prelude::*;
+use futures::future::join_all;
 use futures_util::stream::StreamExt;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs, Role};
 use transprompt::utils::llm::openai::ChatMsg;
@@ -132,10 +133,14 @@ async fn handle_request(mut rx: UnboundedReceiver<Request>,
         // drop write lock before await point
         drop(global_mut);
         streaming_reply.write().0 = true;
-        for assistant_id in assistant_agent_ids.into_iter() {
-            // TODO: now each assistant has independent history, so they don't know the replies from other assistants. Need to update their histories after streaming is done.
-            post_agent_request(assistant_id, user_agent_id, chat_idx, authed_client.to_owned(), global.to_owned()).await;
-        }
+        join_all(
+            assistant_agent_ids
+                .into_iter()
+                .map(|assistant_id|
+                    // TODO: now each assistant has independent history, so they don't know the replies from other assistants. Need to update their histories after streaming is done.
+                    post_agent_request(assistant_id, user_agent_id, chat_idx, authed_client.to_owned(), global.to_owned())
+                )
+        ).await;
         // stage assistant reply into local storage
         global.read().save();
         streaming_reply.write().0 = false;
