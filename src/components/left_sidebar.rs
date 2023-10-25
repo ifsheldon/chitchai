@@ -80,7 +80,7 @@ async fn event_handler(mut rx: UnboundedReceiver<LeftSidebarEvent>,
             }
             LeftSidebarEvent::NewChat => {
                 let mut global = global.write();
-                let new_chat = Chat::default(&global.chat_manager);
+                let new_chat = Chat::default(&mut global.chat_manager);
                 let new_chat_id = new_chat.id;
                 global.chats.push(new_chat);
                 global.save();

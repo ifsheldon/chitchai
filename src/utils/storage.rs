@@ -27,10 +27,10 @@ impl StoredStates {
             Ok(value) => value.into(),
             Err(e) => {
                 log::error!("error: {}", e);
-                let chat_manager = ChatManager::new();
-                let mut default_chat = Chat::default(&chat_manager);
+                let mut chat_manager = ChatManager::new();
+                let mut default_chat = Chat::default(&mut chat_manager);
                 default_chat.topic = "Default Chat".to_string();
-                let mut default_chat2 = Chat::default(&chat_manager);
+                let mut default_chat2 = Chat::default(&mut chat_manager);
                 default_chat2.topic = "Default Chat 2".to_string();
                 let stored_states = Self {
                     run_count: 0,
