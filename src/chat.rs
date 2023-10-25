@@ -55,15 +55,12 @@ impl Chat {
     pub fn default(chat_manager: &ChatManager) -> Self {
         let sys_msg_id = chat_manager.default_sys_prompt_id();
         let history = vec![sys_msg_id];
-        let assistant_type = AgentType::Assistant {
-            instructions: "A helpful assistant".to_string(),
-        };
-        let assistant = AgentConfig::new(None,
-                                         assistant_type.str().to_string(),
-                                         assistant_type);
-        let user = AgentConfig::new(None,
-                                    AgentType::User.str().to_string(),
-                                    AgentType::User);
+        let assistant = AgentConfig::new_assistant(
+            Some("Alice"),
+            "You are a helpful assistant.",
+            "",
+        );
+        let user = AgentConfig::new_user(None::<&str>, "");
         let agent_histories = HashMap::from([
             (assistant.id, history.clone()),
             (user.id, history),

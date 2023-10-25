@@ -1,3 +1,3 @@
-pub const ASSISTANT_SYS_PROMPT: &str = r#"
-You are a helpful assistant.
+pub const ASSISTANT_SYS_PROMPT_TEMPLATE: &str = r#"{{instructions}}
+{{name_instructions}}
 "#;
