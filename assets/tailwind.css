@@ -652,10 +652,6 @@ video {
   height: 2rem;
 }
 
-.h-\[100vh\] {
-  height: 100vh;
-}
-
 .h-full {
   height: 100%;
 }
@@ -866,8 +862,8 @@ video {
   padding: 1rem;
 }
 
-.p-20 {
-  padding: 5rem;
+.p-5 {
+  padding: 1.25rem;
 }
 
 .px-2 {
@@ -915,6 +911,10 @@ video {
   padding-bottom: 2rem;
 }
 
+.pb-5 {
+  padding-bottom: 1.25rem;
+}
+
 .pl-1 {
   padding-left: 0.25rem;
 }
@@ -923,16 +923,16 @@ video {
   padding-left: 2.5rem;
 }
 
+.pr-10 {
+  padding-right: 2.5rem;
+}
+
 .pr-20 {
   padding-right: 5rem;
 }
 
-.pb-5 {
-  padding-bottom: 1.25rem;
-}
-
-.pr-10 {
-  padding-right: 2.5rem;
+.pr-5 {
+  padding-right: 1.25rem;
 }
 
 .text-left {

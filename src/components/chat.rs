@@ -42,9 +42,9 @@ pub fn ChatContainer(cx: Scope) -> Element {
 
     render! {
         div {
-            class: "flex h-[100vh] w-full flex-col relative",
+            class: "flex h-full w-full flex-col relative",
             div {
-                class: "flex-1 space-y-6 overflow-y-auto bg-slate-200 p-4 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
+                class: "flex-1 space-y-6 overflow-y-auto bg-slate-200 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
                 history
                 .iter()
                 .map(|msg_id| {
@@ -107,7 +107,7 @@ pub fn ChatMessageInput(cx: Scope, disable_submit: bool) -> Element {
 
     render! {
         form {
-            class: "mt-2 absolute bottom-0 w-full pr-10 pb-5",
+            class: "mt-2 absolute bottom-0 w-full pr-5 pb-5",
             id: "chat-form",
             onsubmit: move |_| {
                 log::info!("onsubmit {}", &input_value.get().value);

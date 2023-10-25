@@ -13,7 +13,7 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
     match chat_msg.msg.role {
         Role::System => render! {
                 div {
-                    class: "flex flex-row-reverse items-start",
+                    class: "flex flex-row-reverse items-start p-5",
                     img {
                         class: "ml-2 h-8 w-8 rounded-full",
                         src: "https://dummyimage.com/128x128/354ea1/ffffff&text=S"
@@ -28,7 +28,7 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
             },
         Role::User => render! {
             div {
-                class: "flex flex-row-reverse items-start",
+                class: "flex flex-row-reverse items-start p-5",
                 img {
                     class: "ml-2 h-8 w-8 rounded-full",
                     src: "https://dummyimage.com/128x128/354ea1/ffffff&text=U"
@@ -43,7 +43,7 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
         },
         Role::Assistant => render! {
             div {
-                class: "flex items-start",
+                class: "flex items-start p-5",
                 img {
                     class: "mr-2 h-8 w-8 rounded-full",
                     src: "https://dummyimage.com/128x128/363536/ffffff&text=A"
