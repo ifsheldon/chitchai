@@ -17,11 +17,10 @@ pub mod agent_profiles;
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LeftSidebarEvent {
-    ToggleChatHistory,
     ChangeChat(Uuid),
     NewChat,
-    EnterDiscovery,
-    EnterAgentProfile,
+    EnableSecondary(SecondarySidebar),
+    DisableSecondary(SecondarySidebar),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,7 +37,8 @@ impl SecondarySidebar {
 }
 
 pub fn LeftSidebar(cx: Scope) -> Element {
-    let secondary_sidebar = use_state(cx, || SecondarySidebar::None);
+    use_shared_state_provider(cx, || SecondarySidebar::None);
+    let secondary_sidebar = use_shared_state::<SecondarySidebar>(cx).unwrap();
     let showing_chat_id = use_shared_state::<ChatId>(cx).unwrap();
     let streaming_reply = use_shared_state::<StreamingReply>(cx).unwrap();
     let global = use_shared_state::<StoredStates>(cx).unwrap();
@@ -47,7 +47,7 @@ pub fn LeftSidebar(cx: Scope) -> Element {
         aside {
             class: "flex",
             IconSidebar {}
-            match secondary_sidebar.get() {
+            match *secondary_sidebar.read() {
                 SecondarySidebar::History => rsx! {
                     ChatHistorySidebar {}
                 },
@@ -64,21 +64,30 @@ pub fn LeftSidebar(cx: Scope) -> Element {
 
 
 async fn event_handler(mut rx: UnboundedReceiver<LeftSidebarEvent>,
-                       secondary_sidebar: UseState<SecondarySidebar>,
+                       secondary_sidebar: UseSharedState<SecondarySidebar>,
                        showing_chat_id: UseSharedState<ChatId>,
                        streaming_reply: UseSharedState<StreamingReply>,
                        global: UseSharedState<StoredStates>) {
     while let Some(event) = rx.next().await {
         match event {
-            LeftSidebarEvent::ToggleChatHistory => {
-                secondary_sidebar.modify(|s| {
-                    match s {
-                        SecondarySidebar::History => SecondarySidebar::None,
-                        _ => SecondarySidebar::History,
+            LeftSidebarEvent::EnableSecondary(secondary) => {
+                *secondary_sidebar.write() = secondary;
+            }
+            LeftSidebarEvent::DisableSecondary(secondary) => {
+                if *secondary_sidebar.read() == secondary {
+                    let mut secondary_sidebar = secondary_sidebar.write();
+                    if *secondary_sidebar == secondary {
+                        *secondary_sidebar = SecondarySidebar::None;
                     }
-                })
+                }
             }
             LeftSidebarEvent::NewChat => {
+                if *secondary_sidebar.read() != SecondarySidebar::History {
+                    let mut secondary_sidebar = secondary_sidebar.write();
+                    if *secondary_sidebar != SecondarySidebar::History {
+                        *secondary_sidebar = SecondarySidebar::History;
+                    }
+                }
                 let mut global = global.write();
                 let new_chat = Chat::default(&mut global.chat_manager);
                 let new_chat_id = new_chat.id;
@@ -87,14 +96,6 @@ async fn event_handler(mut rx: UnboundedReceiver<LeftSidebarEvent>,
                 if !streaming_reply.read().0 {
                     showing_chat_id.write().0 = new_chat_id;
                 }
-            }
-            LeftSidebarEvent::EnterDiscovery => {
-                // TODO: implement entering discovery
-                log::info!("EnterDiscovery");
-            }
-            LeftSidebarEvent::EnterAgentProfile => {
-                // TODO: implement entering user profile
-                log::info!("EnterAgentProfile");
             }
             LeftSidebarEvent::ChangeChat(chat_id) => {
                 if (!streaming_reply.read().0) && showing_chat_id.read().0 != chat_id {
