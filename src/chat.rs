@@ -53,20 +53,31 @@ impl Chat {
     }
 
     pub fn default(chat_manager: &mut ChatManager) -> Self {
-        let assistant = AgentConfig::new_assistant(
+        // init two assistants named Alice and Bob
+        let assistant_alice = AgentConfig::new_assistant(
             Some("Alice"),
             "You are a helpful assistant.",
             "",
         );
-        let assistant_sys_prompt = sys_msg(assistant.sys_prompt.as_str());
-        let assistant_sys_prompt_id = chat_manager.insert(assistant_sys_prompt);
+        let assistant_alice_sys_prompt = sys_msg(assistant_alice.sys_prompt.as_str());
+        let assistant_alice_sys_prompt_id = chat_manager.insert(assistant_alice_sys_prompt);
+        let assistant_bob = AgentConfig::new_assistant(
+            Some("Bob"),
+            "You are a helpful assistant.",
+            "",
+        );
+        let assistant_bob_sys_prompt = sys_msg(assistant_bob.sys_prompt.as_str());
+        let assistant_bob_sys_prompt_id = chat_manager.insert(assistant_bob_sys_prompt);
+        // init a user whose history is empty and will be displayed by default
         let user = AgentConfig::new_user(None::<&str>, "");
         let agent_histories = HashMap::from([
-            (assistant.id, vec![assistant_sys_prompt_id]),
+            (assistant_alice.id, vec![assistant_alice_sys_prompt_id]),
+            (assistant_bob.id, vec![assistant_bob_sys_prompt_id]),
             (user.id, Vec::new()),
         ]);
         let agents = HashMap::from([
-            (assistant.id, assistant),
+            (assistant_alice.id, assistant_alice),
+            (assistant_bob.id, assistant_bob),
             (user.id, user),
         ]);
         Self::new("New Chat".to_string(), Default::default(), agent_histories, agents)
