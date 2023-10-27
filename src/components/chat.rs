@@ -39,7 +39,7 @@ pub fn ChatContainer(cx: Scope) -> Element {
     assert_eq!(user_agent_id.len(), 1, "user_agents.len() == 1");  // TODO: support multiple user agents
     let user_agent = chat.agents.get(&user_agent_id[0]).unwrap();
     let history = &user_agent.history;
-
+    // TODO: fix overflow when history is too long
     render! {
         div {
             class: "flex h-full w-full flex-col relative",
