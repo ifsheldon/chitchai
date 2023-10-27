@@ -2,7 +2,33 @@ use serde::{Deserialize, Serialize};
 use transprompt::prompt::PromptTemplate;
 use uuid::Uuid;
 
+use crate::chat::{LinkedChatHistory, MessageManager};
 use crate::prompt_engineer::prompt_templates::ASSISTANT_SYS_PROMPT_TEMPLATE;
+use crate::utils::{EMPTY, sys_msg};
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AgentName {
+    UserDefault,
+    AssistantDefault,
+    Named(String),
+}
+
+impl AgentName {
+    pub fn assistant(name: Option<impl Into<String>>) -> Self {
+        match name {
+            Some(name) => Self::Named(name.into()),
+            None => Self::AssistantDefault,
+        }
+    }
+
+    pub fn user(name: Option<impl Into<String>>) -> Self {
+        match name {
+            Some(name) => Self::Named(name.into()),
+            None => Self::UserDefault,
+        }
+    }
+}
+
 
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,82 +50,92 @@ impl AgentType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct AgentId {
-    id: Uuid,
+pub struct AgentID {
+    pub(crate) id: Uuid,
 }
 
-
-impl AgentId {
+impl AgentID {
     pub fn new() -> Self {
         Self {
             id: Uuid::new_v4(),
         }
     }
-
-    pub fn id(&self) -> Uuid {
-        self.id
-    }
 }
 
-impl Into<String> for AgentId {
-    fn into(self) -> String {
-        self.id.to_string()
-    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AgentInstance {
+    pub id: AgentID,
+    pub config: AgentConfig,
+    pub history: LinkedChatHistory,
 }
 
-impl From<String> for AgentId {
-    fn from(s: String) -> Self {
-        let id = Uuid::parse_str(&s).expect("Failed to parse AgentId from String");
+impl AgentInstance {
+    pub fn new(config: AgentConfig, history: LinkedChatHistory) -> Self {
         Self {
-            id,
+            id: AgentID::new(),
+            config,
+            history,
         }
     }
+
+    pub fn get_name(&self) -> AgentName {
+        self.config.name.clone()
+    }
+
+    pub fn default_assistant(name: AgentName, message_manager: &mut MessageManager) -> Self {
+        let config = AgentConfig::new_assistant(name, "You are a helpful assistant.", EMPTY);
+        let sys_prompt_id = message_manager.insert(sys_msg(config.simple_sys_prompt()));
+        Self::new(config, vec![sys_prompt_id])
+    }
+
+    pub fn default_user() -> Self {
+        let config = AgentConfig::new_user(AgentName::UserDefault, EMPTY);
+        Self::new(config, vec![])
+    }
 }
 
-#[readonly::make]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
-    pub id: AgentId,
-    pub name: Option<String>,
+    pub name: AgentName,
     pub description: String,
     pub agent_type: AgentType,
-    pub sys_prompt: String,
 }
 
-const EMPTY: String = String::new();
-
 impl AgentConfig {
-    pub fn new_user(name: Option<impl Into<String>>, description: impl Into<String>) -> Self {
+    pub fn new_user(name: AgentName, description: impl Into<String>) -> Self {
         Self {
-            id: AgentId::new(),
-            name: name.map(|n| n.into()),
+            name,
             description: description.into(),
             agent_type: AgentType::User,
-            sys_prompt: EMPTY,
         }
     }
 
-    pub fn new_assistant(name: Option<impl Into<String>>,
+    pub fn new_assistant(name: AgentName,
                          instructions: impl Into<String>,
                          description: impl Into<String>) -> Self {
-        let name = name.map(|n| n.into());
         let instructions = instructions.into();
-        let sys_prompt = PromptTemplate::new(ASSISTANT_SYS_PROMPT_TEMPLATE)
-            .construct_prompt()
-            .fill("name_instructions",
-                  name
-                      .as_ref()
-                      .map(|n| format!("Your name is {}", n))
-                      .unwrap_or(String::new()))
-            .fill("instructions", instructions.clone())
-            .complete()
-            .expect("Failed to complete sys_prompt");
         Self {
-            id: AgentId::new(),
-            name: name.map(|n| n.into()),
+            name,
             description: description.into(),
             agent_type: AgentType::Assistant { instructions },
-            sys_prompt,
+        }
+    }
+
+    pub fn simple_sys_prompt(&self) -> String {
+        match &self.agent_type {
+            AgentType::User => EMPTY,
+            AgentType::Assistant { instructions } => {
+                PromptTemplate::new(ASSISTANT_SYS_PROMPT_TEMPLATE)
+                    .construct_prompt()
+                    .fill("name_instructions", match &self.name {
+                        AgentName::UserDefault => EMPTY,
+                        AgentName::AssistantDefault => EMPTY,
+                        AgentName::Named(name) => format!("Your name is {}.", name),
+                    })
+                    .fill("instructions", instructions.clone())
+                    .complete()
+                    .expect("Failed to complete sys_prompt")
+            }
         }
     }
 }

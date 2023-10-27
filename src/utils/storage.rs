@@ -1,23 +1,27 @@
-use gloo_storage::{LocalStorage, Storage};
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
+use gloo_storage::{LocalStorage, Storage};
+
+pub(crate) use schema::*;
+
+use crate::agents::{AgentConfig, AgentName};
 use crate::app::APP_NAME;
-use crate::chat::{Chat, ChatManager, RawChat};
+use crate::chat::Chat;
 use crate::utils::auth::Auth;
 use crate::utils::customization::Customization;
 use crate::utils::settings::{GPTService, OpenAIModel};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
+pub(crate) mod schema;
+pub(crate) mod conversion;
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct StoredStates {
     pub run_count: usize,
     pub customization: Customization,
-    pub chat_manager: ChatManager,
+    pub name_to_configs: HashMap<AgentName, AgentConfig>,
     pub chats: Vec<Chat>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub auth: Option<Auth>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub selected_service: Option<GPTService>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub openai_model: Option<OpenAIModel>,
 }
 
@@ -30,16 +34,13 @@ impl StoredStates {
             Ok(value) => value.into(),
             Err(e) => {
                 log::error!("error: {}", e);
-                let mut chat_manager = ChatManager::new();
-                let mut default_chat = Chat::default(&mut chat_manager);
+                let (mut default_chat, name_to_configs) = Chat::default_chat_and_configs();
                 default_chat.topic = "Default Chat".to_string();
-                let mut default_chat2 = Chat::default(&mut chat_manager);
-                default_chat2.topic = "Default Chat 2".to_string();
                 let stored_states = Self {
                     run_count: 0,
                     customization: Default::default(),
-                    chat_manager,
-                    chats: vec![default_chat, default_chat2],
+                    name_to_configs,
+                    chats: vec![default_chat],
                     auth: None,
                     selected_service: None,
                     openai_model: None,
@@ -58,68 +59,6 @@ impl StoredStates {
         match LocalStorage::set(APP_NAME, saved_storage) {
             Ok(_) => log::info!("Saved StoredStates"),
             Err(e) => log::error!("Error when saving StoredStates: {}", e),
-        }
-    }
-}
-
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
-pub(crate) struct RawStoredStates {
-    pub run_count: usize,
-    pub customization: Customization,
-    pub chat_manager: ChatManager,
-    // to prevent json parse error when parsing Chat, this is an adhoc fix
-    pub chats: Vec<RawChat>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub auth: Option<Auth>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub selected_service: Option<GPTService>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub openai_model: Option<OpenAIModel>,
-}
-
-impl Into<StoredStates> for RawStoredStates {
-    fn into(self) -> StoredStates {
-        let RawStoredStates {
-            run_count,
-            customization,
-            chat_manager,
-            chats,
-            auth,
-            selected_service,
-            openai_model,
-        } = self;
-        StoredStates {
-            run_count,
-            customization,
-            chat_manager,
-            chats: chats.into_iter().map(|c| c.into()).collect(),
-            auth,
-            selected_service,
-            openai_model,
-        }
-    }
-}
-
-impl From<StoredStates> for RawStoredStates {
-    fn from(value: StoredStates) -> Self {
-        let StoredStates {
-            run_count,
-            customization,
-            chat_manager,
-            chats,
-            auth,
-            selected_service,
-            openai_model,
-        } = value;
-        Self {
-            run_count,
-            customization,
-            chat_manager,
-            chats: chats.into_iter().map(|c| c.into()).collect(),
-            auth,
-            selected_service,
-            openai_model,
         }
     }
 }

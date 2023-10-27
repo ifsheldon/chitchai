@@ -22,9 +22,3 @@ impl From<String> for DatetimeString {
         Self(parsed.to_rfc3339())
     }
 }
-
-impl Default for DatetimeString {
-    fn default() -> Self {
-        Self::get_now()
-    }
-}

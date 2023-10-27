@@ -4,11 +4,11 @@ use futures_util::StreamExt;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs};
 use uuid::Uuid;
 
-use crate::agents::AgentId;
+use crate::agents::AgentID;
 use crate::app::{AuthedClient, ChatId, StreamingReply};
-use crate::chat::{Chat, ChatManager, LinkedChatHistory, MessageId};
+use crate::chat::{Chat, LinkedChatHistory, MessageID, MessageManager};
 use crate::components::chat::Request;
-use crate::utils::{assistant_msg, user_msg};
+use crate::utils::{assistant_msg, EMPTY, user_msg};
 use crate::utils::storage::StoredStates;
 
 pub(super) fn find_chat_idx_by_id(chats: &Vec<Chat>, id: &Uuid) -> usize {
@@ -23,39 +23,39 @@ pub(super) fn find_chat_idx_by_id(chats: &Vec<Chat>, id: &Uuid) -> usize {
 
 #[inline]
 fn map_chat_messages(chat_msgs: &LinkedChatHistory,
-                     chat_manager: &ChatManager) -> Vec<ChatCompletionRequestMessage> {
+                     message_manager: &MessageManager) -> Vec<ChatCompletionRequestMessage> {
     chat_msgs
         .iter()
-        .map(|msg_id| chat_manager.get(msg_id).unwrap().msg.clone())
+        .map(|msg_id| message_manager.get(msg_id).unwrap().msg.clone())
         .collect()
 }
 
 #[inline]
 fn push_history(chat: &mut Chat,
-                agent_id: &AgentId,
-                msg_id: MessageId) {
+                agent_id: &AgentID,
+                msg_id: MessageID) {
     chat
-        .agent_histories
+        .agents
         .get_mut(agent_id)
         .unwrap()
-        .push(msg_id);
+        .history
+        .push(msg_id)
 }
 
-async fn post_agent_request(assistant_id: AgentId,
-                            user_agent_id: AgentId,
+async fn post_agent_request(assistant_id: AgentID,
+                            user_agent_id: AgentID,
                             chat_idx: usize,
                             authed_client: UseSharedState<AuthedClient>,
                             global: UseSharedState<StoredStates>) {
     let mut global_mut = global.write();
     let chat = &global_mut.chats[chat_idx];
     // get the context to send to AI
-    let messages_to_send = map_chat_messages(chat.agent_histories.get(&assistant_id).as_ref().unwrap(), &global_mut.chat_manager);
-    // create an empty assistant message for UI to show a message card
-    let agent_name = chat.agents.get(&assistant_id).unwrap().name.clone();
-    let assistant_reply = assistant_msg("", agent_name);
-    let assistant_reply_id = global_mut.chat_manager.insert(assistant_reply);
-    // update history, inserting assistant reply that is empty for now
+    let agent = chat.agents.get(&assistant_id).unwrap();
+    let messages_to_send = map_chat_messages(&agent.history, &chat.message_manager);
+    let agent_name = agent.get_name();
+    // update history, inserting assistant reply that is empty initially
     let chat = &mut global_mut.chats[chat_idx];
+    let assistant_reply_id = chat.message_manager.insert(assistant_msg(EMPTY, agent_name));
     push_history(chat, &assistant_id, assistant_reply_id);
     push_history(chat, &user_agent_id, assistant_reply_id);
     // drop write lock before await point
@@ -82,7 +82,8 @@ async fn post_agent_request(assistant_id: AgentId,
                 }
                 let mut global_mut = global.write();
                 let assistant_reply_msg = global_mut
-                    .chat_manager
+                    .chats[chat_idx]
+                    .message_manager
                     .get_mut(&assistant_reply_id)
                     .unwrap();
                 assistant_reply_msg.merge_delta(&response.choices[0].delta);
@@ -110,19 +111,20 @@ pub(super) async fn handle_request(mut rx: UnboundedReceiver<Request>,
         let mut global_mut = global.write();
         let chat_idx = find_chat_idx_by_id(&global_mut.chats, &chat_id);
         let chat = &global_mut.chats[chat_idx];
-        let user_agent_ids: Vec<AgentId> = chat.user_agent_ids();
+        let user_agent_ids: Vec<AgentID> = chat.user_agent_ids();
         assert_eq!(user_agent_ids.len(), 1, "user_agent_ids.len() == 1"); // TODO: support multiple user agents
         let user_agent_id = user_agent_ids[0];
-        let assistant_agent_ids: Vec<AgentId> = chat.assistant_agent_ids();
+        let user_agent = chat.agents.get(&user_agent_id).unwrap();
+        let assistant_agent_ids: Vec<AgentID> = chat.assistant_agent_ids();
         // create user message and register them to chat manager
-        let user_query = user_msg(request.as_str(), None::<&str>);
-        let user_msg_id = global_mut.chat_manager.insert(user_query.clone());
+        let user_query = user_msg(request.as_str(), user_agent.get_name());
+        let user_msg_id = global_mut.chats[chat_idx].message_manager.insert(user_query.clone());
         // update history, inserting user request
         global_mut
             .chats[chat_idx]
-            .agent_histories
+            .agents
             .iter_mut()
-            .for_each(|(_, history)| history.push(user_msg_id));
+            .for_each(|(_, agent)| agent.history.push(user_msg_id));
         global_mut.save();
         // drop write lock before await point
         drop(global_mut);

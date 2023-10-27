@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 
 pub use message_card::*;
 
-use crate::agents::AgentId;
+use crate::agents::AgentID;
 use crate::app::{AuthedClient, ChatId, StreamingReply};
 use crate::chat::Chat;
 use crate::components::chat::request_utils::{find_chat_idx_by_id, handle_request};
@@ -33,12 +33,12 @@ pub fn ChatContainer(cx: Scope) -> Element {
     );
     // get data
     let stored_states = stored_states.read();
-    let chat_manager = &stored_states.chat_manager;
     let chat_idx = find_chat_idx_by_id(&stored_states.chats, &chat_id.read().0);
     let chat: &Chat = &stored_states.chats[chat_idx];
-    let user_agent_id: Vec<AgentId> = chat.user_agent_ids();
+    let user_agent_id: Vec<AgentID> = chat.user_agent_ids();
     assert_eq!(user_agent_id.len(), 1, "user_agents.len() == 1");  // TODO: support multiple user agents
-    let history = chat.agent_histories.get(&user_agent_id[0]).unwrap();
+    let user_agent = chat.agents.get(&user_agent_id[0]).unwrap();
+    let history = &user_agent.history;
 
     render! {
         div {
@@ -48,7 +48,7 @@ pub fn ChatContainer(cx: Scope) -> Element {
                 history
                 .iter()
                 .map(|msg_id| {
-                    let msg = chat_manager.get(msg_id).unwrap();
+                    let msg = chat.message_manager.get(msg_id).unwrap();
                     rsx! {
                         MessageCard {
                             chat_msg: msg.clone()
