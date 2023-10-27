@@ -82,18 +82,20 @@ async fn event_handler(mut rx: UnboundedReceiver<LeftSidebarEvent>,
                 }
             }
             LeftSidebarEvent::NewChat => {
-                if *secondary_sidebar.read() != SecondarySidebar::History {
-                    let mut secondary_sidebar = secondary_sidebar.write();
-                    if *secondary_sidebar != SecondarySidebar::History {
-                        *secondary_sidebar = SecondarySidebar::History;
-                    }
-                }
-                let mut global = global.write();
-                let new_chat = Chat::default();
-                let new_chat_id = new_chat.id;
-                global.chats.push(new_chat);
-                global.save();
+                // if not streaming, create a new chat
                 if !streaming_reply.read().0 {
+                    // if secondary sidebar is not history, change it to history
+                    if *secondary_sidebar.read() != SecondarySidebar::History {
+                        let mut secondary_sidebar = secondary_sidebar.write();
+                        if *secondary_sidebar != SecondarySidebar::History {
+                            *secondary_sidebar = SecondarySidebar::History;
+                        }
+                    }
+                    let mut global = global.write();
+                    let new_chat = Chat::default();
+                    let new_chat_id = new_chat.id;
+                    global.chats.push(new_chat);
+                    global.save();
                     showing_chat_id.write().0 = new_chat_id;
                 }
             }
