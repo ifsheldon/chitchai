@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::sync::{Arc, Mutex};
 
 use dioxus::prelude::*;
 use futures::future::join_all;
@@ -45,8 +45,8 @@ fn push_history(chat: &mut Chat,
 }
 
 #[inline]
-fn linearize_replies(mut replies: Vec<(AgentID, MessageID, Instant)>) -> LinkedChatHistory {
-    replies.sort_by(|(_, _, finish_time1), (_, _, finish_time2)| finish_time1.cmp(finish_time2));
+fn linearize_replies(mut replies: Vec<(AgentID, MessageID, usize)>) -> LinkedChatHistory {
+    replies.sort_by(|(_, _, ord1), (_, _, ord2)| ord1.cmp(ord2));
     replies
         .into_iter()
         .map(|(_agent_id, msg_id, _)| msg_id)
@@ -57,7 +57,8 @@ async fn post_agent_request(assistant_id: AgentID,
                             user_agent_id: AgentID,
                             chat_idx: usize,
                             authed_client: UseSharedState<AuthedClient>,
-                            global: UseSharedState<StoredStates>) -> (AgentID, MessageID, Instant) {
+                            order: Arc<Mutex<usize>>,
+                            global: UseSharedState<StoredStates>) -> (AgentID, MessageID, usize) {
     let mut global_mut = global.write();
     let chat = &global_mut.chats[chat_idx];
     // get the context to send to AI
@@ -102,8 +103,10 @@ async fn post_agent_request(assistant_id: AgentID,
             Err(e) => log::error!("OpenAI Error: {:?}", e),
         }
     }
-    let finish_time = Instant::now();
-    (assistant_id, assistant_reply_id, finish_time)
+    let mut order = order.lock().unwrap();
+    let got_order = *order;
+    *order += 1;
+    (assistant_id, assistant_reply_id, got_order)
 }
 
 
@@ -142,10 +145,11 @@ pub(super) async fn handle_request(mut rx: UnboundedReceiver<Request>,
         // drop write lock before await point
         drop(global_mut);
         streaming_reply.write().0 = true;
+        let order = Arc::new(Mutex::new(0_usize));
         let results = join_all(
             assistant_agent_ids
                 .iter()
-                .map(|assistant_id| post_agent_request(*assistant_id, user_agent_id, chat_idx, authed_client.to_owned(), global.to_owned()))
+                .map(|assistant_id| post_agent_request(*assistant_id, user_agent_id, chat_idx, authed_client.to_owned(), order.clone(), global.to_owned()))
         ).await;
         let replies = linearize_replies(results);
         // add replies to history of each assistant
