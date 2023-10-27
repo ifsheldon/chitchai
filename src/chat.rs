@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::agents::{AgentConfig, AgentID, AgentInstance, AgentName, AgentType};
 use crate::utils::datetime::DatetimeString;
+use crate::utils::sys_msg;
 
 pub type LinkedChatHistory = Vec<MessageID>;
 
@@ -66,17 +67,26 @@ impl Chat {
         let mut message_manager = MessageManager::default();
         // init two assistants named Alice and Bob
         let alice = AgentName::Named("Alice".to_string());
-        let assistant_alice = AgentInstance::default_assistant(
+        let alice_config = AgentConfig::new_assistant(
             alice.clone(),
-            &mut message_manager,
+            "You are a helpful assistant. You are going to work with Bob, another assistant. You will receive requests from a user. If you think it's not your turn to reply, you can skip the request by replying `[NONE]`.",
+            "",
         );
+        let alice_sys_prompt = alice_config.simple_sys_prompt();
+        let alice_sys_prompt_id = message_manager.insert(sys_msg(alice_sys_prompt));
+        let assistant_alice = AgentInstance::new(alice_config, vec![alice_sys_prompt_id]);
         let bob = AgentName::Named("Bob".to_string());
-        let assistant_bob = AgentInstance::default_assistant(
+        let bob_config = AgentConfig::new_assistant(
             bob.clone(),
-            &mut message_manager,
+            "You are a helpful assistant. You are going to work with Alice, another assistant. You will receive requests from a user. If you think it's not your turn to reply, you can skip the request by replying `[NONE]`.",
+            "",
         );
+        let bob_sys_prompt = bob_config.simple_sys_prompt();
+        let bob_sys_prompt_id = message_manager.insert(sys_msg(bob_sys_prompt));
+        let assistant_bob = AgentInstance::new(bob_config, vec![bob_sys_prompt_id]);
         // init a user whose history is empty and will be displayed by default
         let user = AgentInstance::default_user();
+
         name_to_configs.insert(alice, assistant_alice.config.clone());
         name_to_configs.insert(bob, assistant_bob.config.clone());
         name_to_configs.insert(user.get_name(), user.config.clone());

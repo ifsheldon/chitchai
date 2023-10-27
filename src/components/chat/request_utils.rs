@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use dioxus::prelude::*;
 use futures::future::join_all;
 use futures_util::StreamExt;
@@ -42,11 +44,20 @@ fn push_history(chat: &mut Chat,
         .push(msg_id)
 }
 
+#[inline]
+fn linearize_replies(mut replies: Vec<(AgentID, MessageID, Instant)>) -> LinkedChatHistory {
+    replies.sort_by(|(_, _, finish_time1), (_, _, finish_time2)| finish_time1.cmp(finish_time2));
+    replies
+        .into_iter()
+        .map(|(_agent_id, msg_id, _)| msg_id)
+        .collect()
+}
+
 async fn post_agent_request(assistant_id: AgentID,
                             user_agent_id: AgentID,
                             chat_idx: usize,
                             authed_client: UseSharedState<AuthedClient>,
-                            global: UseSharedState<StoredStates>) {
+                            global: UseSharedState<StoredStates>) -> (AgentID, MessageID, Instant) {
     let mut global_mut = global.write();
     let chat = &global_mut.chats[chat_idx];
     // get the context to send to AI
@@ -67,7 +78,7 @@ async fn post_agent_request(assistant_id: AgentID,
         .unwrap()
         .chat()
         .create_stream(CreateChatCompletionRequestArgs::default()
-            .model("gpt-3.5-turbo-0613")
+            .model("gpt-3.5-turbo-0613") // TODO: use model when it's OpenAI Service
             .messages(messages_to_send)
             .build()
             .expect("creating request failed"))
@@ -91,6 +102,8 @@ async fn post_agent_request(assistant_id: AgentID,
             Err(e) => log::error!("OpenAI Error: {:?}", e),
         }
     }
+    let finish_time = Instant::now();
+    (assistant_id, assistant_reply_id, finish_time)
 }
 
 
@@ -129,14 +142,23 @@ pub(super) async fn handle_request(mut rx: UnboundedReceiver<Request>,
         // drop write lock before await point
         drop(global_mut);
         streaming_reply.write().0 = true;
-        join_all(
+        let results = join_all(
             assistant_agent_ids
-                .into_iter()
-                .map(|assistant_id|
-                    // TODO: now each assistant has independent history, so they don't know the replies from other assistants. Need to update their histories after streaming is done.
-                    post_agent_request(assistant_id, user_agent_id, chat_idx, authed_client.to_owned(), global.to_owned())
-                )
+                .iter()
+                .map(|assistant_id| post_agent_request(*assistant_id, user_agent_id, chat_idx, authed_client.to_owned(), global.to_owned()))
         ).await;
+        let replies = linearize_replies(results);
+        // add replies to history of each assistant
+        let mut global_mut = global.write();
+        let chat = &mut global_mut.chats[chat_idx];
+        assistant_agent_ids
+            .iter()
+            .for_each(|agent_id| {
+                for msg_id in replies.iter() {
+                    push_history(chat, agent_id, *msg_id);
+                }
+            });
+        drop(global_mut);
         // stage assistant reply into local storage
         global.read().save();
         streaming_reply.write().0 = false;
