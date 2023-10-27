@@ -7,7 +7,7 @@ pub enum GPTService {
     OpenAI,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OpenAIModel {
     GPT35,
     GPT35_16k,

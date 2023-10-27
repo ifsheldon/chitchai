@@ -18,7 +18,7 @@ const DEPLOYMENT_ID: &str = "deployment-id";
 enum SettingEvent {
     ToggleEnableGroupChat,
     SelectService(Option<GPTService>),
-    SaveServiceConfig,
+    SaveServiceConfig(Option<OpenAIModel>),
 }
 
 
@@ -53,7 +53,7 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
                 log::info!("Selected service: {:?}", service);
                 global.write().selected_service = service;
             }
-            SettingEvent::SaveServiceConfig => {
+            SettingEvent::SaveServiceConfig(openai_model) => {
                 let gpt_service = global.read().selected_service.clone();
                 log::info!("Saving service configs for {:?}", gpt_service);
                 match gpt_service {
@@ -85,6 +85,10 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
                                     log::error!("API Key is required");
                                     continue;
                                 }
+                                if openai_model.is_none() {
+                                    log::error!("Model is required");
+                                    continue;
+                                }
                             }
                         }
                         // save configs
@@ -110,6 +114,7 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
                             }
                         };
                         let mut global = global.write();
+                        global.openai_model = openai_model;
                         global.auth.replace(new_auth);
                         authed_client.write().replace(new_authed_client);
                         global.save();
@@ -284,7 +289,7 @@ fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
         async move {
             while let Some(event) = rx.next().await {
                 match event {
-                    ServiceEvent::SaveConfigs => setting_event_handler.send(SettingEvent::SaveServiceConfig),
+                    ServiceEvent::SaveConfigs => setting_event_handler.send(SettingEvent::SaveServiceConfig(service_settings.read().openai_model.clone())),
                     ServiceEvent::SelectOpenAIModel(model) => service_settings.write().openai_model = model,
                 }
             }

@@ -5,7 +5,7 @@ use crate::app::APP_NAME;
 use crate::chat::{Chat, ChatManager, RawChat};
 use crate::utils::auth::Auth;
 use crate::utils::customization::Customization;
-use crate::utils::settings::GPTService;
+use crate::utils::settings::{GPTService, OpenAIModel};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct StoredStates {
@@ -15,7 +15,10 @@ pub struct StoredStates {
     pub chats: Vec<Chat>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auth: Option<Auth>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub selected_service: Option<GPTService>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub openai_model: Option<OpenAIModel>,
 }
 
 
@@ -39,6 +42,7 @@ impl StoredStates {
                     chats: vec![default_chat, default_chat2],
                     auth: None,
                     selected_service: None,
+                    openai_model: None,
                 };
                 let raw_stored_states = RawStoredStates::from(stored_states);
                 if let Err(e) = LocalStorage::set(key, &raw_stored_states) {
@@ -68,7 +72,10 @@ pub(crate) struct RawStoredStates {
     pub chats: Vec<RawChat>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auth: Option<Auth>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub selected_service: Option<GPTService>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub openai_model: Option<OpenAIModel>,
 }
 
 impl Into<StoredStates> for RawStoredStates {
@@ -80,6 +87,7 @@ impl Into<StoredStates> for RawStoredStates {
             chats,
             auth,
             selected_service,
+            openai_model,
         } = self;
         StoredStates {
             run_count,
@@ -88,6 +96,7 @@ impl Into<StoredStates> for RawStoredStates {
             chats: chats.into_iter().map(|c| c.into()).collect(),
             auth,
             selected_service,
+            openai_model,
         }
     }
 }
@@ -101,6 +110,7 @@ impl From<StoredStates> for RawStoredStates {
             chats,
             auth,
             selected_service,
+            openai_model,
         } = value;
         Self {
             run_count,
@@ -109,6 +119,7 @@ impl From<StoredStates> for RawStoredStates {
             chats: chats.into_iter().map(|c| c.into()).collect(),
             auth,
             selected_service,
+            openai_model,
         }
     }
 }
