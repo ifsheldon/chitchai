@@ -107,7 +107,7 @@ pub fn ChatMessageInput(cx: Scope, disable_submit: bool) -> Element {
 
     render! {
         form {
-            class: "mt-2 absolute bottom-0 w-full pr-5 pb-5",
+            class: "mt-2 absolute bottom-0 w-full p-5",
             id: "chat-form",
             onsubmit: move |_| {
                 log::info!("onsubmit {}", &input_value.get().value);
