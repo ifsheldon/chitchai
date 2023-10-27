@@ -18,7 +18,6 @@ pub struct MessageId(Uuid);
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ChatManager {
     messages: HashMap<MessageId, ChatMsg>,
-    default_sys_prompt_id: MessageId,
 }
 
 impl Default for ChatManager {
@@ -130,17 +129,9 @@ impl Clone for Chat {
 
 impl ChatManager {
     pub fn new() -> Self {
-        let default_sys_prompt = sys_msg("You are a helpful assistant");
-        let default_sys_prompt_id = MessageId(Uuid::new_v4());
-        let messages = HashMap::from([(default_sys_prompt_id, default_sys_prompt)]);
         Self {
-            messages,
-            default_sys_prompt_id,
+            messages: HashMap::new(),
         }
-    }
-
-    pub fn default_sys_prompt_id(&self) -> MessageId {
-        self.default_sys_prompt_id
     }
 
     pub fn insert(&mut self, msg: ChatMsg) -> MessageId {
