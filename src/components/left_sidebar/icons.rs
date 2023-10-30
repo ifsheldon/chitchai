@@ -40,7 +40,9 @@ pub fn IconSidebar(cx: Scope) -> Element {
 pub fn Logo(cx: Scope) -> Element {
     render! {
         a {
-            href: "#",
+            href: "https://github.com/ifsheldon/chitchai",
+            target: "_blank",
+            rel: "noopener noreferrer",
             class: "mb-1",
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
