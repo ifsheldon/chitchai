@@ -117,7 +117,7 @@ pub(super) async fn handle_request(mut rx: UnboundedReceiver<Request>,
                                    streaming_reply: UseSharedState<StreamingReply>) {
     while let Some(Request(request)) = rx.next().await {
         let chat_id = chat_id.read().0;
-        log::warn!("chat id = {}", chat_id);
+        log::info!("chat id = {}", chat_id);
         if authed_client.read().is_none() {
             // TODO: handle this error and make a toast to notify user
             log::error!("authed_client is None");
