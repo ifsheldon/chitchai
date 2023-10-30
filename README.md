@@ -83,3 +83,9 @@ Contributions are always welcome! Please open an issue or submit a PR. Also see 
 ## License
 
 The license is and will always be Apache 2.0. See [LICENSE](./LICENSE) for more details. Feel free to fork and use it.
+
+For UIs, we started ours with components from [Langui](langui.dev) which is licensed under MIT License.
+
+## Acknowledgements
+
+Special thanks to GPT-4 and Github Copilot for helping out with the code.
