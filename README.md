@@ -1,4 +1,5 @@
 # Chitchai 聊斋
+[![website](https://badgen.net/badge/chitchai/.dev/blue)](https://chitchai.dev)
 
 Chitchat with multiple AIs to get more insights!
 
@@ -59,7 +60,7 @@ it's the same as `ChitChai`.
 
 Sorted by importance and priority:
 
-- [ ] Hosting it on a website. chitchai.dev is on the way!
+- [x] Hosting it on a website. chitchai.dev is on the way!
 - [ ] Add UI for manage agent profiles
 - [ ] Add UI for dynamically add agents to a chat
 - [ ] Add UIs for all sorts of warnings
