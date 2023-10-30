@@ -2,6 +2,10 @@
 
 Chitchat with multiple AIs to get more insights!
 
+![dark](./images/dark_mode.png)
+
+![bright](./images/bright_mode.png)
+
 ## Run
 
 0. You'll need Rust, `rustc` `wasm32-unknown-unknown` target and Dioxus CLI.
