@@ -1066,22 +1066,6 @@ video {
   height: var(--scrollbar-height, 16px);
 }
 
-.scrollbar-track-slate-900 {
-  --scrollbar-track: #0f172a !important;
-}
-
-.scrollbar-thumb-slate-500 {
-  --scrollbar-thumb: #64748b !important;
-}
-
-.scrollbar-thumb-slate-600 {
-  --scrollbar-thumb: #475569 !important;
-}
-
-.scrollbar-thumb-slate-700 {
-  --scrollbar-thumb: #334155 !important;
-}
-
 .after\:absolute::after {
   content: var(--tw-content);
   position: absolute;
@@ -1285,6 +1269,67 @@ video {
   .dark\:placeholder-slate-400::placeholder {
     --tw-placeholder-opacity: 1;
     color: rgb(148 163 184 / var(--tw-placeholder-opacity));
+  }
+
+  .dark\:scrollbar {
+    scrollbar-color: var(--scrollbar-thumb, initial) var(--scrollbar-track, initial);
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+    border-radius: var(--scrollbar-track-radius);
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-track:hover {
+    background-color: var(--scrollbar-track-hover, var(--scrollbar-track));
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-track:active {
+    background-color: var(--scrollbar-track-active, var(--scrollbar-track-hover, var(--scrollbar-track)));
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: var(--scrollbar-thumb-radius);
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover, var(--scrollbar-thumb));
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-thumb:active {
+    background-color: var(--scrollbar-thumb-active, var(--scrollbar-thumb-hover, var(--scrollbar-thumb)));
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-corner {
+    background-color: var(--scrollbar-corner);
+    border-radius: var(--scrollbar-corner-radius);
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-corner:hover {
+    background-color: var(--scrollbar-corner-hover, var(--scrollbar-corner));
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar-corner:active {
+    background-color: var(--scrollbar-corner-active, var(--scrollbar-corner-hover, var(--scrollbar-corner)));
+  }
+
+  .dark\:scrollbar {
+    scrollbar-width: auto;
+  }
+
+  .dark\:scrollbar::-webkit-scrollbar {
+    display: block;
+    width: var(--scrollbar-width, 16px);
+    height: var(--scrollbar-height, 16px);
+  }
+
+  .dark\:scrollbar-track-slate-900 {
+    --scrollbar-track: #0f172a !important;
+  }
+
+  .dark\:scrollbar-thumb-slate-700 {
+    --scrollbar-thumb: #334155 !important;
   }
 
   .peer:focus ~ .dark\:peer-focus\:ring-blue-800 {

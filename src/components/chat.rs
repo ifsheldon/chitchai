@@ -45,7 +45,7 @@ pub fn ChatContainer(cx: Scope) -> Element {
             div {
                 class: "flex flex-col h-full space-y-6 bg-slate-200 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
                 div {
-                    class: "overflow-auto max-h-[90vh] flex-grow scrollbar scrollbar-thumb-slate-700 scrollbar-track-slate-900",
+                    class: "overflow-auto max-h-[90vh] flex-grow dark:scrollbar dark:scrollbar-thumb-slate-700 dark:scrollbar-track-slate-900",
                     history
                         .iter()
                         .map(|msg_id| {
