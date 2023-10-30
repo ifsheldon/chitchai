@@ -1,4 +1,4 @@
-# Chitchai
+# Chitchai 聊斋
 
 Chitchat with multiple AIs to get more insights!
 
