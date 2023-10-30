@@ -16,7 +16,7 @@ const DEPLOYMENT_ID: &str = "deployment-id";
 
 #[derive(Debug, Clone, PartialEq)]
 enum SettingEvent {
-    ToggleEnableGroupChat,
+    SetGroupChat(bool),
     SelectService(Option<GPTService>),
     SaveServiceConfig(Option<OpenAIModel>),
 }
@@ -40,7 +40,7 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
     while let Some(event) = rx.next().await {
         log::info!("setting_event_handler {:?}", event);
         match event {
-            SettingEvent::ToggleEnableGroupChat => enable_group_chat.modify(|e| !*e),
+            SettingEvent::SetGroupChat(s) => enable_group_chat.set(s),
             SettingEvent::SelectService(service) => {
                 match service.as_ref() {
                     None => *service_settings.write() = ServiceSettings::default(),
@@ -156,7 +156,7 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                         "Settings"
                     }
                 }
-                Toggle {}
+                ToggleGroupChat {}
                 ServiceConfigs {
                     gpt_service: global.read().selected_service.clone(),
                     enable_group_chat: *enable_group_chat.get(),
@@ -241,7 +241,7 @@ fn SelectServiceSection(cx: Scope) -> Element {
     }
 }
 
-pub fn Toggle(cx: Scope) -> Element {
+pub fn ToggleGroupChat(cx: Scope) -> Element {
     let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
     render! {
         div {
@@ -250,7 +250,14 @@ pub fn Toggle(cx: Scope) -> Element {
                 class: "relative flex cursor-pointer items-center",
                 input {
                     r#type: "checkbox",
-                    onclick: |_| setting_event_handler.send(SettingEvent::ToggleEnableGroupChat),
+                    onchange: |e| {
+                        let value = e.data.value.as_str();
+                        match value {
+                            "true" => setting_event_handler.send(SettingEvent::SetGroupChat(true)),
+                            "false" => setting_event_handler.send(SettingEvent::SetGroupChat(false)),
+                            _ => log::error!("Unknown toggle value: {}", value),
+                        }
+                    },
                     value: "",
                     class: "peer sr-only",
                 }
