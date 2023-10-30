@@ -51,19 +51,20 @@ it's the same as `ChitChai`.
 1. Run `npx tailwindcss -i src/tailwind_input.css -o ./assets/tailwind.css --watch`
 2. Run `dx serve --hot-reload`
 
-## TODO
+## TODOs
 
 Sorted by importance and priority:
 
-- [] Hosting it on a website. chitchai.dev is on the way!
-- [] Add UI for manage agent profiles
-- [] Add UI for dynamically add agents to a chat
-- [] Add UIs for all sorts of warnings
-- [] Add UIs for user guide
-- [] i18n
-- [] Support MiniMax LLM
-- [] More UI refinements
-- [] Perhaps a bit more research? Can we do all the stuff `AutoGen` promises?
+- [ ] Hosting it on a website. chitchai.dev is on the way!
+- [ ] Add UI for manage agent profiles
+- [ ] Add UI for dynamically add agents to a chat
+- [ ] Add UIs for all sorts of warnings
+- [ ] Filter out `[NONE]` replies
+- [ ] Add UIs for user guide
+- [ ] i18n
+- [ ] Support MiniMax LLM
+- [ ] More UI refinements
+- [ ] Perhaps a bit more research? Can we do all the stuff `AutoGen` promises?
 
 ## Motivation
 
