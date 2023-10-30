@@ -4,8 +4,8 @@ use transprompt::utils::llm::openai::ChatMsg;
 use uuid::Uuid;
 
 use crate::agents::{AgentConfig, AgentID, AgentInstance, AgentName, AgentType};
+use crate::utils::{JSONConfig, sys_msg};
 use crate::utils::datetime::DatetimeString;
-use crate::utils::sys_msg;
 
 pub type LinkedChatHistory = Vec<MessageID>;
 
@@ -63,38 +63,27 @@ impl Chat {
     }
 
     pub fn default_chat_and_configs() -> (Self, HashMap<AgentName, AgentConfig>) {
+        let configs: Vec<JSONConfig> = serde_json::from_str(include_str!("../default_assistants.json")).unwrap();
         let mut name_to_configs = HashMap::new();
         let mut message_manager = MessageManager::default();
-        // init two assistants named Alice and Bob
-        let alice = AgentName::Named("Alice".to_string());
-        let alice_config = AgentConfig::new_assistant(
-            alice.clone(),
-            "You are a helpful assistant who specialized in programming. You are going to work with Bob, another assistant. You will receive requests from a user. If you think it's not your turn to reply or it's not your expertise, you can skip the request by replying `[NONE]`, which is totally fine.",
-            "",
-        );
-        let alice_sys_prompt = alice_config.simple_sys_prompt();
-        let alice_sys_prompt_id = message_manager.insert(sys_msg(alice_sys_prompt));
-        let assistant_alice = AgentInstance::new(alice_config, vec![alice_sys_prompt_id]);
-        let bob = AgentName::Named("Bob".to_string());
-        let bob_config = AgentConfig::new_assistant(
-            bob.clone(),
-            "You are a helpful assistant who specialized in graphics design. You are going to work with Alice, another assistant. You will receive requests from a user. If you think it's not your turn to reply or it's not your expertise, you can skip the request by replying `[NONE]`, which is totally fine.",
-            "",
-        );
-        let bob_sys_prompt = bob_config.simple_sys_prompt();
-        let bob_sys_prompt_id = message_manager.insert(sys_msg(bob_sys_prompt));
-        let assistant_bob = AgentInstance::new(bob_config, vec![bob_sys_prompt_id]);
+        let mut agents = HashMap::new();
+        for agent_json_config in configs {
+            let agent_name = AgentName::Named(agent_json_config.name.clone());
+            let agent_config = AgentConfig::new_assistant(
+                agent_name.clone(),
+                agent_json_config.instructions.clone(),
+                "",
+            );
+            let sys_prompt = agent_config.simple_sys_prompt();
+            let sys_prompt_id = message_manager.insert(sys_msg(sys_prompt));
+            let agent = AgentInstance::new(agent_config, vec![sys_prompt_id]);
+            name_to_configs.insert(agent_name, agent.config.clone());
+            agents.insert(agent.id, agent);
+        }
         // init a user whose history is empty and will be displayed by default
         let user = AgentInstance::default_user();
-
-        name_to_configs.insert(alice, assistant_alice.config.clone());
-        name_to_configs.insert(bob, assistant_bob.config.clone());
         name_to_configs.insert(user.get_name(), user.config.clone());
-        let agents = HashMap::from([
-            (assistant_alice.id, assistant_alice),
-            (assistant_bob.id, assistant_bob),
-            (user.id, user),
-        ]);
+        agents.insert(user.id, user);
         let chat = Self {
             id: Uuid::new_v4(),
             message_manager,

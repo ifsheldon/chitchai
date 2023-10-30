@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
 use transprompt::utils::llm::openai::ChatMsg;
 
@@ -61,4 +62,10 @@ pub fn assistant_msg(string: impl Into<String>, name: AgentName) -> ChatMsg {
         },
         metadata: None,
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct JSONConfig {
+    pub name: String,
+    pub instructions: String,
 }
