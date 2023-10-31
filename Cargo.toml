@@ -20,6 +20,7 @@ futures-util = "0.3"
 async-std = "1.12"
 chrono = { version = "0.4", features = ["serde", "unstable-locales"] }
 readonly = "0.2"
+dioxus-router = "0.4"
 
 [dependencies.uuid]
 version = "1.5.0"

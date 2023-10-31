@@ -1,20 +1,39 @@
 #![allow(non_snake_case)]
 
-use dioxus_web::Config;
+use dioxus::prelude::*;
+use dioxus_router::prelude::*;
 use log::Level;
 
-use chitchai::app::{App, AppProps};
+use chitchai::app::App;
 use chitchai::utils::storage::StoredStates;
 
-fn main() {
-    console_log::init_with_level(Level::Debug).unwrap();
+#[derive(Routable, Clone)]
+enum Route {
+    #[route("/")]
+    Main,
+    // #[route("/announcements")]
+    // Announcements,
+}
+
+fn Main(cx: Scope) -> Element {
     let mut stored_states = StoredStates::get_or_init();
     stored_states.run_count += 1;
     stored_states.save();
     log::info!("This is your {} time running ChitChai!", stored_states.run_count);
-    dioxus_web::launch_with_props(App,
-                                  AppProps {
-                                      stored_states,
-                                  },
-                                  Config::new())
+    render! {
+        App {
+            stored_states: stored_states
+        }
+    }
+}
+
+fn AppRouter(cx: Scope) -> Element {
+    render! {
+        Router::<Route> {}
+    }
+}
+
+fn main() {
+    console_log::init_with_level(Level::Debug).unwrap();
+    dioxus_web::launch(AppRouter);
 }
