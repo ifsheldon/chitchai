@@ -8,7 +8,7 @@ use crate::components::{ChatContainer, LeftSidebar, SettingSidebar};
 use crate::utils::auth::Auth;
 use crate::utils::storage::StoredStates;
 
-pub const APP_NAME: &str = "chitchai";
+
 
 // Global states
 pub type AuthedClient = Option<Client>;
@@ -16,6 +16,18 @@ pub type AuthedClient = Option<Client>;
 pub struct ChatId(pub Uuid);
 
 pub struct StreamingReply(pub bool);
+
+pub fn Main(cx: Scope) -> Element {
+    let mut stored_states = StoredStates::get_or_init();
+    stored_states.run_count += 1;
+    stored_states.save();
+    log::info!("This is your {} time running ChitChai!", stored_states.run_count);
+    render! {
+        App {
+            stored_states: stored_states
+        }
+    }
+}
 
 
 #[non_exhaustive]

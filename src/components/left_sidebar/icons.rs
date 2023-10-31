@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 
-use crate::app::AppEvents;
+use crate::pages::app::AppEvents;
 use crate::components::{LeftSidebarEvent, SecondarySidebar};
 
 pub fn IconSidebar(cx: Scope) -> Element {

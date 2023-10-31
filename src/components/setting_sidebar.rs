@@ -3,7 +3,7 @@ use futures_util::StreamExt;
 use transprompt::async_openai::Client;
 use transprompt::async_openai::config::{AzureConfig, OpenAIConfig};
 
-use crate::app::{AppEvents, AuthedClient};
+use crate::pages::app::{AppEvents, AuthedClient};
 use crate::utils::auth::Auth;
 use crate::utils::settings::{GPTService, OpenAIModel};
 use crate::utils::storage::StoredStates;

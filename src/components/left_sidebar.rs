@@ -6,7 +6,7 @@ pub use agent_profiles::*;
 pub use chat_history::*;
 pub use icons::*;
 
-use crate::app::{ChatId, StreamingReply};
+use crate::pages::app::{ChatId, StreamingReply};
 use crate::chat::Chat;
 use crate::utils::storage::StoredStates;
 

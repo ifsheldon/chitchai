@@ -5,7 +5,7 @@ use gloo_storage::{LocalStorage, Storage};
 pub(crate) use schema::*;
 
 use crate::agents::{AgentConfig, AgentName};
-use crate::app::APP_NAME;
+use crate::APP_NAME;
 use crate::chat::Chat;
 use crate::utils::auth::Auth;
 use crate::utils::customization::Customization;

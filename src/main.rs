@@ -4,8 +4,7 @@ use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 use log::Level;
 
-use chitchai::app::App;
-use chitchai::utils::storage::StoredStates;
+use chitchai::pages::app::Main;
 
 #[derive(Routable, Clone)]
 enum Route {
@@ -15,17 +14,6 @@ enum Route {
     // Announcements,
 }
 
-fn Main(cx: Scope) -> Element {
-    let mut stored_states = StoredStates::get_or_init();
-    stored_states.run_count += 1;
-    stored_states.save();
-    log::info!("This is your {} time running ChitChai!", stored_states.run_count);
-    render! {
-        App {
-            stored_states: stored_states
-        }
-    }
-}
 
 fn AppRouter(cx: Scope) -> Element {
     render! {

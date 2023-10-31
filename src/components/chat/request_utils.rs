@@ -7,7 +7,7 @@ use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatC
 use uuid::Uuid;
 
 use crate::agents::AgentID;
-use crate::app::{AuthedClient, ChatId, StreamingReply};
+use crate::pages::app::{AuthedClient, ChatId, StreamingReply};
 use crate::chat::{Chat, LinkedChatHistory, MessageID, MessageManager};
 use crate::components::chat::Request;
 use crate::utils::{assistant_msg, EMPTY, user_msg};

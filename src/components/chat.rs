@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 pub use message_card::*;
 
 use crate::agents::AgentID;
-use crate::app::{AuthedClient, ChatId, StreamingReply};
+use crate::pages::app::{AuthedClient, ChatId, StreamingReply};
 use crate::chat::Chat;
 use crate::components::chat::request_utils::{find_chat_idx_by_id, handle_request};
 use crate::utils::storage::StoredStates;
