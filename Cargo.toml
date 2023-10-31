@@ -28,3 +28,8 @@ features = [
     "fast-rng", # Use a faster (but still sufficiently random) RNG
     "serde", # Enables serialization/deserialization of UUIDs
 ]
+
+[profile.release]
+opt-level = "z"
+strip = true
+lto = true
