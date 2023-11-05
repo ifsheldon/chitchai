@@ -64,6 +64,7 @@ Sorted by importance and priority:
 - [ ] Add UI for manage agent profiles
 - [ ] Add UI for dynamically add agents to a chat
 - [ ] Add UIs for all sorts of warnings
+- [ ] Add better markdown support
 - [ ] Filter out `[NONE]` replies
 - [ ] Add UIs for user guide
 - [ ] i18n
