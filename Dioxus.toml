@@ -27,7 +27,7 @@ reload_html = true
 watch_path = ["src", "assets", "default_assistants.json"]
 
 # uncomment line below if using Router
-# index_on_404 = true
+index_on_404 = true
 
 # include `assets` in web platform
 [web.resource]

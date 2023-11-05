@@ -20,6 +20,8 @@ async-std = "1.12"
 chrono = { version = "0.4", features = ["serde", "unstable-locales"] }
 readonly = "0.2"
 dioxus-router = "0.4"
+toml = "0.8"
+dioxus_markdown = { git = "https://github.com/DioxusLabs/markdown.git", version = "0.2" }
 
 [dependencies.uuid]
 version = "1.5.0"

@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 use transprompt::async_openai::types::Role;
 use transprompt::utils::llm::openai::ChatMsg;
+use dioxus_markdown::Markdown;
 
 #[derive(Props, PartialEq, Clone, Debug)]
 pub struct MessageCardProps {
@@ -20,8 +21,11 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
                     }
                     div {
                         class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
-                        p {
-                            "{msg}"
+                        article {
+                            class: "prose lg:prose-xl",
+                                Markdown {
+                                content: "{msg}",
+                            }
                         }
                     }
                 }
@@ -38,8 +42,11 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
                     }
                     div {
                         class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
-                        p {
-                            "{msg}"
+                        article {
+                            class: "prose lg:prose-xl",
+                                Markdown {
+                                content: "{msg}",
+                            }
                         }
                     }
                 }
@@ -57,8 +64,11 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
                     }
                     div {
                         class: "flex rounded-b-xl rounded-tr-xl bg-slate-50 p-4 dark:bg-slate-800 sm:max-w-md md:max-w-2xl",
-                        p {
-                            "{msg}"
+                        article {
+                            class: "prose lg:prose-xl",
+                                Markdown {
+                                content: "{msg}",
+                            }
                         }
                     }
                 }

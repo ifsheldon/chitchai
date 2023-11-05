@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use gloo_storage::{LocalStorage, Storage};
+use serde::{Deserialize, Serialize};
 
 pub(crate) use schema::*;
 
@@ -61,4 +62,18 @@ impl StoredStates {
             Err(e) => log::error!("Error when saving StoredStates: {}", e),
         }
     }
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub(crate) struct Announcements {
+    pub(crate) announcement: Vec<Announcement>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub(crate) struct Announcement {
+    pub(crate) title: String,
+    pub(crate) date: String,
+    pub(crate) author: String,
+    pub(crate) content: String,
 }
