@@ -1,5 +1,5 @@
 /*
-! tailwindcss v3.3.3 | MIT License | https://tailwindcss.com
+! tailwindcss v3.3.5 | MIT License | https://tailwindcss.com
 */
 
 /*
@@ -1041,6 +1041,48 @@ video {
   margin-bottom: 0;
 }
 
+.\!prose-invert {
+  --tw-prose-body: var(--tw-prose-invert-body) !important;
+  --tw-prose-headings: var(--tw-prose-invert-headings) !important;
+  --tw-prose-lead: var(--tw-prose-invert-lead) !important;
+  --tw-prose-links: var(--tw-prose-invert-links) !important;
+  --tw-prose-bold: var(--tw-prose-invert-bold) !important;
+  --tw-prose-counters: var(--tw-prose-invert-counters) !important;
+  --tw-prose-bullets: var(--tw-prose-invert-bullets) !important;
+  --tw-prose-hr: var(--tw-prose-invert-hr) !important;
+  --tw-prose-quotes: var(--tw-prose-invert-quotes) !important;
+  --tw-prose-quote-borders: var(--tw-prose-invert-quote-borders) !important;
+  --tw-prose-captions: var(--tw-prose-invert-captions) !important;
+  --tw-prose-kbd: var(--tw-prose-invert-kbd) !important;
+  --tw-prose-kbd-shadows: var(--tw-prose-invert-kbd-shadows) !important;
+  --tw-prose-code: var(--tw-prose-invert-code) !important;
+  --tw-prose-pre-code: var(--tw-prose-invert-pre-code) !important;
+  --tw-prose-pre-bg: var(--tw-prose-invert-pre-bg) !important;
+  --tw-prose-th-borders: var(--tw-prose-invert-th-borders) !important;
+  --tw-prose-td-borders: var(--tw-prose-invert-td-borders) !important;
+}
+
+.prose-invert {
+  --tw-prose-body: var(--tw-prose-invert-body);
+  --tw-prose-headings: var(--tw-prose-invert-headings);
+  --tw-prose-lead: var(--tw-prose-invert-lead);
+  --tw-prose-links: var(--tw-prose-invert-links);
+  --tw-prose-bold: var(--tw-prose-invert-bold);
+  --tw-prose-counters: var(--tw-prose-invert-counters);
+  --tw-prose-bullets: var(--tw-prose-invert-bullets);
+  --tw-prose-hr: var(--tw-prose-invert-hr);
+  --tw-prose-quotes: var(--tw-prose-invert-quotes);
+  --tw-prose-quote-borders: var(--tw-prose-invert-quote-borders);
+  --tw-prose-captions: var(--tw-prose-invert-captions);
+  --tw-prose-kbd: var(--tw-prose-invert-kbd);
+  --tw-prose-kbd-shadows: var(--tw-prose-invert-kbd-shadows);
+  --tw-prose-code: var(--tw-prose-invert-code);
+  --tw-prose-pre-code: var(--tw-prose-invert-pre-code);
+  --tw-prose-pre-bg: var(--tw-prose-invert-pre-bg);
+  --tw-prose-th-borders: var(--tw-prose-invert-th-borders);
+  --tw-prose-td-borders: var(--tw-prose-invert-td-borders);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1215,6 +1257,10 @@ video {
   width: 100vw;
 }
 
+.max-w-none {
+  max-width: none;
+}
+
 .flex-grow {
   flex-grow: 1;
 }
@@ -1297,10 +1343,6 @@ video {
 
 .rounded-tl-xl {
   border-top-left-radius: 0.75rem;
-}
-
-.rounded-tr-xl {
-  border-top-right-radius: 0.75rem;
 }
 
 .border-l {
@@ -1524,6 +1566,27 @@ video {
 }
 
 @media (prefers-color-scheme: dark) {
+  .dark\:\!prose-invert {
+    --tw-prose-body: var(--tw-prose-invert-body) !important;
+    --tw-prose-headings: var(--tw-prose-invert-headings) !important;
+    --tw-prose-lead: var(--tw-prose-invert-lead) !important;
+    --tw-prose-links: var(--tw-prose-invert-links) !important;
+    --tw-prose-bold: var(--tw-prose-invert-bold) !important;
+    --tw-prose-counters: var(--tw-prose-invert-counters) !important;
+    --tw-prose-bullets: var(--tw-prose-invert-bullets) !important;
+    --tw-prose-hr: var(--tw-prose-invert-hr) !important;
+    --tw-prose-quotes: var(--tw-prose-invert-quotes) !important;
+    --tw-prose-quote-borders: var(--tw-prose-invert-quote-borders) !important;
+    --tw-prose-captions: var(--tw-prose-invert-captions) !important;
+    --tw-prose-kbd: var(--tw-prose-invert-kbd) !important;
+    --tw-prose-kbd-shadows: var(--tw-prose-invert-kbd-shadows) !important;
+    --tw-prose-code: var(--tw-prose-invert-code) !important;
+    --tw-prose-pre-code: var(--tw-prose-invert-pre-code) !important;
+    --tw-prose-pre-bg: var(--tw-prose-invert-pre-bg) !important;
+    --tw-prose-th-borders: var(--tw-prose-invert-th-borders) !important;
+    --tw-prose-td-borders: var(--tw-prose-invert-td-borders) !important;
+  }
+
   .dark\:prose-invert {
     --tw-prose-body: var(--tw-prose-invert-body);
     --tw-prose-headings: var(--tw-prose-invert-headings);
