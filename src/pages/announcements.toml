@@ -15,5 +15,5 @@ Dev features:
 1. Chitchai is built with Rust and Dioxus. Almost Rust except CSS.
 2. Chitchai is wasm-based. It can be run in browser, desktop and mobile.
 
-Please check the [chitchat repo](https://github.com/ifsheldon/chitchai) for more details! And we always welcome your feedbacks as issues and PRs.
+Please check the [Chitchai repo](https://github.com/ifsheldon/chitchai) for more details! And we always welcome your feedbacks as issues and PRs.
 """
