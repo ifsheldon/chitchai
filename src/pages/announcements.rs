@@ -14,11 +14,11 @@ pub fn AnnouncementPage(cx: Scope) -> Element {
         .into_iter()
         .map(|a| {
             let command = format!("Please help me write an announcement with title `{}`", a.title);
-            let announcement = format!(r#"# {}
+            let announcement = format!(r#"## {}
 
-## By {}
+### By {}
 
-## {}
+#### {}
 
 {}
 "#, a.title, a.author, a.date, a.content);
