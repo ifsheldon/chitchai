@@ -3,7 +3,7 @@ title = "Announcing Chitchai 0.1"
 date = "2023-11-05"
 author = "Feng Liang"
 content = """ We are pleased to announce the release of Chitchai 聊斋 0.1. This is the first release of Chitchai.
-Chitchai is a chat room for chatting with **multiple** agents. It's like group chats of character.ai, but without subscription. You need subscriptions from GPT providers, though, OpenAI and Azure OpenAI supported for now.
+Chitchai is a chat room for chatting with **multiple** agents. It's like group chats of [character.ai](https://character.ai), but without subscription. You need subscriptions from GPT providers, though, OpenAI and Azure OpenAI supported for now.
 
 Features:
 1. Chat with multiple agents. Demo on chitchai.dev where you can chat with 2 default agents, a designer and a programmer.
