@@ -22,7 +22,7 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
                     div {
                         class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 p-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
                         article {
-                            class: "prose",
+                            class: "prose dark:prose-invert",
                                 Markdown {
                                 content: "{msg}",
                             }
