@@ -65,7 +65,12 @@ pub fn assistant_msg(string: impl Into<String>, name: AgentName) -> ChatMsg {
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
-pub struct JSONConfig {
+pub struct AgentInstructions {
     pub name: String,
     pub instructions: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct Instructions {
+    pub agent_config: Vec<AgentInstructions>,
 }

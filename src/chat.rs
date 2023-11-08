@@ -4,7 +4,7 @@ use transprompt::utils::llm::openai::ChatMsg;
 use uuid::Uuid;
 
 use crate::agents::{AgentConfig, AgentID, AgentInstance, AgentName, AgentType};
-use crate::utils::{JSONConfig, sys_msg};
+use crate::utils::{Instructions, sys_msg};
 use crate::utils::datetime::DatetimeString;
 
 pub type LinkedChatHistory = Vec<MessageID>;
@@ -63,15 +63,15 @@ impl Chat {
     }
 
     pub fn default_chat_and_configs() -> (Self, HashMap<AgentName, AgentConfig>) {
-        let configs: Vec<JSONConfig> = serde_json::from_str(include_str!("../default_assistants.json")).unwrap();
+        let Instructions { agent_config: configs } = toml::from_str(include_str!("../default_assistants.toml")).unwrap();
         let mut name_to_configs = HashMap::new();
         let mut message_manager = MessageManager::default();
         let mut agents = HashMap::new();
-        for agent_json_config in configs {
-            let agent_name = AgentName::Named(agent_json_config.name.clone());
+        for agent_instructions in configs {
+            let agent_name = AgentName::Named(agent_instructions.name.clone());
             let agent_config = AgentConfig::new_assistant(
                 agent_name.clone(),
-                agent_json_config.instructions.clone(),
+                agent_instructions.instructions.clone(),
                 "",
             );
             let sys_prompt = agent_config.simple_sys_prompt();

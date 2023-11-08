@@ -27,7 +27,7 @@ computer.
 
 ## Configure Agents
 
-For now, to configure agents, you need to edit [`default_assistants.json`](./default_assistants.json) and then re-run
+For now, to configure agents, you need to edit [`default_assistants.toml`](./default_assistants.toml) and then re-run
 the server. Each agent configuration has a field of `name` and `instructions`. `instructions` tells an agent what to or
 not to do. You can start from the template and customize yours.
 
