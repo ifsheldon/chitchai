@@ -14,6 +14,19 @@ Features:
 Dev features:
 1. Chitchai is built with Rust and Dioxus. Almost Rust except CSS.
 2. Chitchai is wasm-based. It can be run in browser, desktop and mobile.
+3. You can use it as a crate of a collection of chat components. For now you have to get it from git repo, but we will publish it to crates.io soon (when wasm support is upstreamed to `async-openai`).
+
+> How does it work?
+>
+> Compared to AutoGen, Chitchai is super simple thanks to the intelligence of GPT-4.
+> Each agent in a chat room internally has its own chat history, in which only the initial system prompt is different.
+> Messages in agent histories are denoted with agent/user names, and then magically GPT-4 correctly knows who is who and who says what (just like us humans).
+> This ability is remarkable but we humans take it for granted. However, GPT-3.5 or any LLMs like it does not have this ability (yet?).
+
+> A bit of research?
+>
+> Can we do AutoGen just by using aformentioned ability of GPT-4? That's a good question. I don't know. But I think it's worth a try.
+
 
 Please check the [Chitchai repo](https://github.com/ifsheldon/chitchai) for more details! And we always welcome your feedbacks as issues and PRs.
 """
