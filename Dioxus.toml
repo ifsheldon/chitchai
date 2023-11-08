@@ -24,7 +24,7 @@ title = "Chitchai"
 reload_html = true
 
 # which files or dirs will be watcher monitoring
-watch_path = ["src", "assets", "default_assistants.json"]
+watch_path = ["src", "assets", "default_assistants.toml"]
 
 # uncomment line below if using Router
 index_on_404 = true
