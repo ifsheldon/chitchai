@@ -61,6 +61,7 @@ it's the same as `ChitChai`.
 Sorted by importance and priority:
 
 - [x] Hosting it on a website. chitchai.dev is on the way!
+- [ ] Add Support for OpenAI Threads and Assistants APIs
 - [ ] Add UI for manage agent profiles
 - [ ] Add UI for dynamically add agents to a chat
 - [ ] Add UIs for all sorts of warnings
