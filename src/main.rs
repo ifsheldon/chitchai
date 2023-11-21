@@ -4,8 +4,7 @@ use dioxus::prelude::*;
 use dioxus_router::prelude::*;
 use log::Level;
 
-use chitchai::pages::announcements::AnnouncementPage;
-use chitchai::pages::app::Main;
+use chitchai::pages::*;
 
 #[derive(Routable, Clone)]
 enum Route {
@@ -13,6 +12,8 @@ enum Route {
     Main {},
     #[route("/announcements")]
     AnnouncementPage {},
+    #[route("/agents")]
+    Agents {},
     #[route("/:..route")]
     PageNotFound { route: Vec<String> },
 }
