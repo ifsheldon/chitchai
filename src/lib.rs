@@ -6,5 +6,3 @@ pub mod pages;
 pub mod prompt_engineer;
 pub mod chat;
 pub mod utils;
-
-pub const APP_NAME: &str = "chitchai";

@@ -11,16 +11,19 @@ use super::schema::*;
 impl Into<StoredStates> for RawStoredStates {
     fn into(self) -> StoredStates {
         let RawStoredStates {
+            raw_app_settings,
+            raw_chats,
+            raw_agent_configs,
+        } = self;
+        let RawAppSettings {
             run_count,
             customization,
-            name_to_configs,
-            chats,
             auth,
             selected_service,
-            openai_model
-        } = self;
-        let name_to_configs = name_to_configs.into_iter().map(|(k, v)| (k.into(), v)).collect();
-        let chats = chats.into_iter().map(|c| c.into_chat(&name_to_configs)).collect();
+            openai_model,
+        } = raw_app_settings;
+        let name_to_configs = raw_agent_configs.name_to_configs.into_iter().map(|(k, v)| (k.into(), v)).collect();
+        let chats = raw_chats.chats.into_iter().map(|c| c.into_chat(&name_to_configs)).collect();
         StoredStates {
             run_count,
             customization,
@@ -44,16 +47,23 @@ impl From<StoredStates> for RawStoredStates {
             selected_service,
             openai_model
         } = value;
-        let chats = chats.into_iter().map(|c| c.into()).collect();
-        let name_to_configs = name_to_configs.into_iter().map(|(k, v)| (k.into(), v)).collect();
-        Self {
+        let raw_app_settings = RawAppSettings {
             run_count,
             customization,
-            name_to_configs,
-            chats,
             auth,
             selected_service,
             openai_model,
+        };
+        let raw_agent_configs = RawAgentConfigs {
+            name_to_configs: name_to_configs.into_iter().map(|(k, v)| (k.into(), v)).collect(),
+        };
+        let raw_chats = RawChats {
+            chats: chats.into_iter().map(|c| c.into()).collect(),
+        };
+        Self {
+            raw_app_settings,
+            raw_chats,
+            raw_agent_configs,
         }
     }
 }
