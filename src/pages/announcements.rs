@@ -7,7 +7,7 @@ use crate::utils::storage::Announcements;
 
 const ANNOUNCEMENTS: &str = include_str!("announcements.toml");
 
-pub fn AnnouncementPage(cx: Scope) -> Element {
+pub fn AnnouncementPage() -> Element {
     let Announcements { mut announcement } = toml::from_str(ANNOUNCEMENTS).unwrap();
     announcement.sort_by(|a, b| b.date.cmp(&a.date));
     let messages = announcement
@@ -29,20 +29,22 @@ pub fn AnnouncementPage(cx: Scope) -> Element {
         .flatten()
         .collect::<Vec<_>>();
 
-    render! {
+    rsx! {
         div {
             class: "flex h-screen w-screen flex-col relative",
             div {
                 class: "flex flex-col h-full space-y-6 bg-slate-200 text-sm leading-6 text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-300 sm:text-base sm:leading-7",
                 div {
                     class: "overflow-auto max-h-[100vh] flex-grow dark:scrollbar dark:scrollbar-thumb-slate-700 dark:scrollbar-track-slate-900",
-                    messages
+                    {
+                        messages
                         .into_iter()
                         .map(|msg| rsx! {
                                 MessageCard {
                                     chat_msg: msg
                                 }
-                            })
+                        })
+                    }
                 }
             }
         }

@@ -33,10 +33,10 @@ struct ServiceSettings {
 }
 
 async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
-                               enable_group_chat: UseState<bool>,
-                               authed_client: UseSharedState<AuthedClient>,
-                               service_settings: UseSharedState<ServiceSettings>,
-                               global: UseSharedState<StoredStates>) {
+                               mut enable_group_chat: Signal<bool>,
+                               mut authed_client: Signal<AuthedClient>,
+                               mut service_settings: Signal<ServiceSettings>,
+                               mut global: Signal<StoredStates>) {
     while let Some(event) = rx.next().await {
         log::info!("setting_event_handler {:?}", event);
         match event {
@@ -129,21 +129,20 @@ async fn setting_event_handler(mut rx: UnboundedReceiver<SettingEvent>,
 }
 
 
-pub fn SettingSidebar(cx: Scope) -> Element {
+pub fn SettingSidebar() -> Element {
     // get global states
-    let global = use_shared_state::<StoredStates>(cx).unwrap();
-    let authed_client = use_shared_state::<AuthedClient>(cx).unwrap();
+    let global = use_context::<Signal<StoredStates>>();
+    let authed_client = use_context::<Signal<AuthedClient>>();
     // setup local states
-    let enable_group_chat = use_state(cx, || false);
+    let enable_group_chat = use_signal(|| false);
     // setup shared states
-    use_shared_state_provider(cx, ServiceSettings::default);
-    let service_settings = use_shared_state::<ServiceSettings>(cx).unwrap();
-    use_coroutine(cx, |rx| setting_event_handler(rx,
-                                                 enable_group_chat.to_owned(),
-                                                 authed_client.to_owned(),
-                                                 service_settings.to_owned(),
-                                                 global.to_owned()));
-    render! {
+    let service_settings = use_context_provider(|| Signal::new(ServiceSettings::default()));
+    use_coroutine(|rx| setting_event_handler(rx,
+                                             enable_group_chat.to_owned(),
+                                             authed_client.to_owned(),
+                                             service_settings.to_owned(),
+                                             global.to_owned()));
+    rsx! {
         aside {
             class: "flex",
             div {
@@ -159,7 +158,7 @@ pub fn SettingSidebar(cx: Scope) -> Element {
                 ToggleGroupChat {}
                 ServiceConfigs {
                     gpt_service: global.read().selected_service.clone(),
-                    enable_group_chat: *enable_group_chat.get(),
+                    enable_group_chat: *enable_group_chat.read(),
                 }
                 ModelParameters {}
             }
@@ -167,12 +166,12 @@ pub fn SettingSidebar(cx: Scope) -> Element {
     }
 }
 
-fn CloseSettingButton(cx: Scope) -> Element {
-    let app_event_handler = use_coroutine_handle::<AppEvents>(cx).unwrap();
-    render! {
+fn CloseSettingButton() -> Element {
+    let app_event_handler = use_coroutine_handle::<AppEvents>();
+    rsx! {
         button {
             class: "inline-flex rounded-lg p-1 hover:bg-slate-700",
-            onclick: |_| app_event_handler.send(AppEvents::ToggleSettingsSidebar),
+            onclick: move |_| app_event_handler.send(AppEvents::ToggleSettingsSidebar),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -204,19 +203,19 @@ fn CloseSettingButton(cx: Scope) -> Element {
     }
 }
 
-fn SelectServiceSection(cx: Scope) -> Element {
+fn SelectServiceSection() -> Element {
     const NULL_OPTION: &str = "Select AI Provider";
-    let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
+    let setting_event_handler = use_coroutine_handle::<SettingEvent>();
 
-    render! {
+    rsx! {
         div {
             class: "px-2 py-4 text-slate-800 dark:text-slate-200",
             select {
                 name: "select-service",
                 id: "select-service",
-                onchange: |select| {
-                    let value = select.data.value.as_str();
-                    match value {
+                onchange: move |select| {
+                    let value = &select.data.value();
+                    match value.as_str() {
                         "AzureOpenAI" => setting_event_handler.send(SettingEvent::SelectService(Some(GPTService::AzureOpenAI))),
                         "OpenAI" => setting_event_handler.send(SettingEvent::SelectService(Some(GPTService::OpenAI))),
                         NULL_OPTION => setting_event_handler.send(SettingEvent::SelectService(None)),
@@ -241,18 +240,18 @@ fn SelectServiceSection(cx: Scope) -> Element {
     }
 }
 
-pub fn ToggleGroupChat(cx: Scope) -> Element {
-    let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
-    render! {
+pub fn ToggleGroupChat() -> Element {
+    let setting_event_handler = use_coroutine_handle::<SettingEvent>();
+    rsx! {
         div {
             class: "px-2 py-4",
             label {
                 class: "relative flex cursor-pointer items-center",
                 input {
                     r#type: "checkbox",
-                    onchange: |e| {
-                        let value = e.data.value.as_str();
-                        match value {
+                    onchange: move |e| {
+                        let value = &e.data.value();
+                        match value.as_str() {
                             "true" => setting_event_handler.send(SettingEvent::SetGroupChat(true)),
                             "false" => setting_event_handler.send(SettingEvent::SetGroupChat(false)),
                             _ => log::error!("Unknown toggle value: {}", value),
@@ -273,7 +272,7 @@ pub fn ToggleGroupChat(cx: Scope) -> Element {
     }
 }
 
-#[derive(Props, PartialEq)]
+#[derive(Props, PartialEq, Clone, Copy)]
 struct ServiceConfigsProps {
     #[props(! optional)]
     gpt_service: Option<GPTService>,
@@ -286,12 +285,12 @@ enum ServiceEvent {
 }
 
 
-fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
+fn ServiceConfigs(props: ServiceConfigsProps) -> Element {
     // TODO: when the component is opened, display the stored configs if any
-    let service_settings = use_shared_state::<ServiceSettings>(cx).unwrap();
-    let setting_event_handler = use_coroutine_handle::<SettingEvent>(cx).unwrap();
-    let service_event_handler = use_coroutine(cx, |mut rx| {
-        let service_settings = service_settings.to_owned();
+    let service_settings = use_context::<Signal<ServiceSettings>>();
+    let setting_event_handler = use_coroutine_handle::<SettingEvent>();
+    let service_event_handler = use_coroutine(|mut rx| {
+        let mut service_settings = service_settings.to_owned();
         let setting_event_handler = setting_event_handler.to_owned();
         async move {
             while let Some(event) = rx.next().await {
@@ -302,7 +301,7 @@ fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
             }
         }
     });
-    render! {
+    rsx! {
         div {
             class: "my-4 border-t border-slate-300 px-2 py-4 text-slate-800 dark:border-slate-700 dark:text-slate-200",
             label {
@@ -310,43 +309,48 @@ fn ServiceConfigs(cx: Scope<ServiceConfigsProps>) -> Element {
                 "Service Configurations"
             }
             SelectServiceSection {}
-            if let Some(gpt_service) = cx.props.gpt_service {
-                rsx! {
-                    SecretInputs {
-                        gpt_service: gpt_service,
-                    }
-                    if gpt_service == GPTService::OpenAI {
-                        rsx! {
-                            SelectOpenAIModel {
-                                enable_group_chat: cx.props.enable_group_chat,
+            {
+                if let Some(gpt_service) = props.gpt_service {
+                    rsx! {
+                        SecretInputs {
+                            gpt_service: gpt_service,
+                        }
+                        {
+                            if gpt_service == GPTService::OpenAI {
+                                rsx! {
+                                    SelectOpenAIModel {
+                                        enable_group_chat: props.enable_group_chat,
+                                    }
+                                }
+                            } else {
+                                rsx! {}
                             }
                         }
+                        button {
+                            r#type: "button",
+                            class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
+                            onclick: move |_| {
+                                service_event_handler.send(ServiceEvent::SaveConfigs)
+                            },
+                            "Save Configs"
+                        }
                     }
-                    button {
-                        r#type: "button",
-                        class: "mt-4 block w-full rounded-lg bg-slate-200 p-2.5 text-xs font-semibold hover:bg-blue-600 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600",
-                        onclick: |_| {
-                            service_event_handler.send(ServiceEvent::SaveConfigs)
-                        },
-                        "Save Configs"
-                    }
+                } else {
+                    rsx!{}
                 }
             }
         }
     }
 }
 
-#[derive(Props, PartialEq)]
-struct SecretInputsProps {
-    gpt_service: GPTService,
-}
 
-fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
-    let service_settings = use_shared_state::<ServiceSettings>(cx).unwrap();
+#[component]
+fn SecretInputs(gpt_service: GPTService) -> Element {
+    let service_settings = use_context::<Signal<ServiceSettings>>();
     const LABEL_STYLE: &str = "mb-2 mt-4 block px-2 text-sm font-medium";
     const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
-    match cx.props.gpt_service {
-        GPTService::OpenAI => render! {
+    match gpt_service {
+        GPTService::OpenAI => rsx! {
             div {
                 // API Key
                 label {
@@ -358,8 +362,9 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                     r#type: "password",
                     id: "{API_KEY}",
                     class: "{INPUT_STYLE}",
-                    onchange: |c| {
-                        let value = &c.data.value;
+                    onchange: move |c| {
+                        let mut service_settings = service_settings.to_owned();
+                        let value = &c.data.value();
                         if value.is_empty() {
                             service_settings.write().api_key = None;
                         } else {
@@ -378,8 +383,9 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                     r#type: "url",
                     id: "{API_BASE}",
                     class: "{INPUT_STYLE}",
-                    onchange: |c| {
-                        let value = &c.data.value;
+                    onchange: move |c| {
+                        let mut service_settings = service_settings.to_owned();
+                        let value = &c.data.value();
                         if value.is_empty() {
                             service_settings.write().api_base = None;
                         } else {
@@ -398,8 +404,9 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                     r#type: "text",
                     id: "{ORG_ID}",
                     class: "{INPUT_STYLE}",
-                    onchange: |c| {
-                        let value = &c.data.value;
+                    onchange: move |c| {
+                        let mut service_settings = service_settings.to_owned();
+                        let value = &c.data.value();
                         if value.is_empty() {
                             service_settings.write().org_id = None;
                         } else {
@@ -409,7 +416,7 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                 }
             }
         },
-        GPTService::AzureOpenAI => render! {
+        GPTService::AzureOpenAI => rsx! {
             div {
                 // API Key
                 label {
@@ -422,8 +429,9 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                     id: "{API_KEY}",
                     class: "{INPUT_STYLE}",
                     placeholder: "Required",
-                    onchange: |c| {
-                        let value = &c.data.value;
+                    onchange: move |c| {
+                        let mut service_settings = service_settings.to_owned();
+                        let value = &c.data.value();
                         if value.is_empty() {
                             service_settings.write().api_key = None;
                         } else {
@@ -442,8 +450,9 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                     id: "{API_BASE}",
                     class: "{INPUT_STYLE}",
                     placeholder: "Required",
-                    onchange: |c| {
-                        let value = &c.data.value;
+                    onchange: move |c| {
+                        let mut service_settings = service_settings.to_owned();
+                        let value = &c.data.value();
                         if value.is_empty() {
                             service_settings.write().api_base = None;
                         } else {
@@ -462,8 +471,9 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                     id: "{DEPLOYMENT_ID}",
                     class: "{INPUT_STYLE}",
                     placeholder: "Required",
-                    onchange: |c| {
-                        let value = &c.data.value;
+                    onchange: move |c| {
+                        let mut service_settings = service_settings.to_owned();
+                        let value = &c.data.value();
                         if value.is_empty() {
                             service_settings.write().deployment_id = None;
                         } else {
@@ -482,8 +492,9 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
                     id: "{API_VERSION}",
                     class: "{INPUT_STYLE}",
                     placeholder: "Required",
-                    onchange: |c| {
-                        let value = &c.data.value;
+                    onchange: move |c| {
+                        let mut service_settings = service_settings.to_owned();
+                        let value = &c.data.value();
                         if value.is_empty() {
                             service_settings.write().api_version = None;
                         } else {
@@ -496,16 +507,16 @@ fn SecretInputs(cx: Scope<SecretInputsProps>) -> Element {
     }
 }
 
-#[inline_props]
-fn SelectOpenAIModel(cx: Scope, enable_group_chat: bool) -> Element {
+#[component]
+fn SelectOpenAIModel(enable_group_chat: bool) -> Element {
     const NULL_OPTION: &str = "Select a model";
-    let service_event_handler = use_coroutine_handle::<ServiceEvent>(cx).unwrap();
-    let usable_models = if *enable_group_chat {
+    let service_event_handler = use_coroutine_handle::<ServiceEvent>();
+    let usable_models = if enable_group_chat {
         OpenAIModel::gpt4_models()
     } else {
         OpenAIModel::all_models()
     };
-    render! {
+    rsx! {
         div {
             label {
                 r#for: "select-model",
@@ -514,12 +525,12 @@ fn SelectOpenAIModel(cx: Scope, enable_group_chat: bool) -> Element {
             }
             select {
                 name: "select-model",
-                onchange: |change|{
-                    let model = change.data.value.as_str();
+                onchange: move |change|{
+                    let model = &change.data.value();
                     if model == NULL_OPTION {
                         service_event_handler.send(ServiceEvent::SelectOpenAIModel(None));
                     } else {
-                        match usable_models.iter().find(|m| (*m).eq(model)).cloned() {
+                        match usable_models.iter().find(|m| (*m).eq(model.as_str())).cloned() {
                             Some(m) => service_event_handler.send(ServiceEvent::SelectOpenAIModel(Some(m))),
                             None => log::error!("Unknown model: {}", model),
                         }
@@ -531,21 +542,23 @@ fn SelectOpenAIModel(cx: Scope, enable_group_chat: bool) -> Element {
                     value: "",
                     "{NULL_OPTION}"
                 }
-                usable_models.iter().map(|model| rsx! {
-                    option {
-                        value: "{model}",
-                        "{model}"
-                    }
-                })
+                {
+                    usable_models.iter().map(|model| rsx! {
+                        option {
+                            value: "{model}",
+                            "{model}"
+                        }
+                    })
+                }
             }
         }
     }
 }
 
-fn ModelParameters(cx: Scope) -> Element {
+fn ModelParameters() -> Element {
     const LABEL_STYLE: &str = "mb-2 mt-4 block px-2 text-sm font-medium";
     const INPUT_STYLE: &str = "block w-full rounded-lg bg-slate-200 p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-800 dark:placeholder-slate-400 dark:focus:ring-blue-600";
-    render! {
+    rsx! {
         div {
             class: "my-4 border-t border-slate-300 px-2 py-4 text-slate-800 dark:border-slate-700 dark:text-slate-200",
             label {

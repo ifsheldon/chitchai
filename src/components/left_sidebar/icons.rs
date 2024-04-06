@@ -3,12 +3,12 @@ use dioxus::prelude::*;
 use crate::pages::app::AppEvents;
 use crate::components::{LeftSidebarEvent, SecondarySidebar};
 
-pub fn IconSidebar(cx: Scope) -> Element {
-    let now_active_secondary = use_shared_state::<SecondarySidebar>(cx).unwrap().read();
-    let conversation_list_button_active = matches!(*now_active_secondary, SecondarySidebar::History);
-    let user_profile_button_active = matches!(*now_active_secondary, SecondarySidebar::Profile);
+pub fn IconSidebar() -> Element {
+    let now_active_secondary = *(use_context::<Signal<SecondarySidebar>>().read());
+    let conversation_list_button_active = matches!(now_active_secondary, SecondarySidebar::History);
+    let user_profile_button_active = matches!(now_active_secondary, SecondarySidebar::Profile);
 
-    render! {
+    rsx! {
         div {
             class: "flex h-screen w-12 flex-col items-center space-y-8 border-r border-slate-300 bg-slate-50 py-8 dark:border-slate-700 dark:bg-slate-900 sm:w-16",
             Logo {},
@@ -37,8 +37,8 @@ pub fn IconSidebar(cx: Scope) -> Element {
 }
 
 
-pub fn Logo(cx: Scope) -> Element {
-    render! {
+pub fn Logo() -> Element {
+    rsx! {
         a {
             href: "https://github.com/ifsheldon/chitchai",
             target: "_blank",
@@ -59,53 +59,53 @@ pub fn Logo(cx: Scope) -> Element {
 }
 
 
-#[derive(PartialEq, Props, Clone)]
+#[derive(PartialEq, Props, Clone, Copy)]
 pub struct ButtonProps {
     activatable: bool,
     active: bool,
 }
 
-#[derive(Props)]
-pub struct RawButtonProps<'a> {
-    button_props: &'a ButtonProps,
-    on_click: Option<EventHandler<'a, MouseEvent>>,
-    on_click_active: Option<EventHandler<'a, MouseEvent>>,
-    on_click_inactive: Option<EventHandler<'a, MouseEvent>>,
-    children: Element<'a>,
+#[derive(Props, Clone, PartialEq)]
+pub struct RawButtonProps {
+    button_props: ButtonProps,
+    on_click: Option<EventHandler<MouseEvent>>,
+    on_click_active: Option<EventHandler<MouseEvent>>,
+    on_click_inactive: Option<EventHandler<MouseEvent>>,
+    children: Element,
 }
 
-pub fn RawButton<'a>(cx: Scope<'a, RawButtonProps<'a>>) -> Element<'a> {
+pub fn RawButton(props: RawButtonProps) -> Element {
     const BUTTON_INACTIVE_STYLE: &str = "rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-200 focus:outline-none dark:text-slate-400 dark:hover:bg-slate-800";
     const BUTTON_ACTIVE_STYLE: &str = "rounded-lg bg-blue-100 p-1.5 text-blue-600 transition-colors duration-200 dark:bg-slate-800 dark:text-blue-600";
-    let activatable = cx.props.button_props.activatable;
-    let active = cx.props.button_props.active;
-    render! {
+    let activatable = props.button_props.activatable;
+    let active = props.button_props.active;
+    rsx! {
         a {
             href: "#",
             class: if activatable && active {BUTTON_ACTIVE_STYLE} else {BUTTON_INACTIVE_STYLE},
             onclick: move |event| {
                 if activatable {
-                    match (active, &cx.props.on_click_active, &cx.props.on_click_inactive) {
+                    match (active, &props.on_click_active, &props.on_click_inactive) {
                         (true, Some(on_click_active), _) => on_click_active.call(event),
                         (false, _, Some(on_click_inactive)) => on_click_inactive.call(event),
                         _ => {}
                     }
                 } else {
-                    if let Some(on_click) = &cx.props.on_click {
+                    if let Some(on_click) = &props.on_click {
                         on_click.call(event)
                     }
                 }
             },
-            &cx.props.children
+            {&props.children}
         }
     }
 }
 
-pub fn NewConversationButton(cx: Scope<ButtonProps>) -> Element {
-    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
-    render! {
+pub fn NewConversationButton(props: ButtonProps) -> Element {
+    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>();
+    rsx! {
         RawButton {
-            button_props: &cx.props,
+            button_props: props,
             on_click: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::NewChat),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
@@ -141,13 +141,13 @@ pub fn NewConversationButton(cx: Scope<ButtonProps>) -> Element {
     }
 }
 
-pub fn ConversationListButton(cx: Scope<ButtonProps>) -> Element {
-    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
-    render! {
+pub fn ConversationListButton(props: ButtonProps) -> Element {
+    let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>();
+    rsx! {
         RawButton {
             on_click_active: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::DisableSecondary(SecondarySidebar::History)),
             on_click_inactive: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::EnableSecondary(SecondarySidebar::History)),
-            button_props: &cx.props,
+            button_props: props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -174,11 +174,11 @@ pub fn ConversationListButton(cx: Scope<ButtonProps>) -> Element {
 }
 
 
-pub fn DiscoverButton(cx: Scope<ButtonProps>) -> Element {
+pub fn DiscoverButton(props: ButtonProps) -> Element {
     // let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
-    render! {
+    rsx! {
         RawButton {
-            button_props: &cx.props,
+            button_props: props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -205,14 +205,14 @@ pub fn DiscoverButton(cx: Scope<ButtonProps>) -> Element {
 }
 
 
-pub fn UserProfileButton(cx: Scope<ButtonProps>) -> Element {
+pub fn UserProfileButton(props: ButtonProps) -> Element {
     // let chat_sidebar_event_handler = use_coroutine_handle::<LeftSidebarEvent>(cx).unwrap();
-    render! {
+    rsx! {
         RawButton {
             // TODO: enble this after implementing profile sidebar
             // on_click_active: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::EnableSecondary(SecondarySidebar::Profile)),
             // on_click_inactive: move |_| chat_sidebar_event_handler.send(LeftSidebarEvent::DisableSecondary(SecondarySidebar::Profile)),
-            button_props: &cx.props,
+            button_props: props,
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",
@@ -241,12 +241,12 @@ pub fn UserProfileButton(cx: Scope<ButtonProps>) -> Element {
     }
 }
 
-pub fn SettingsButton(cx: Scope<ButtonProps>) -> Element {
-    let app_event_handler = use_coroutine_handle::<AppEvents>(cx).unwrap();
-    render! {
+pub fn SettingsButton(props: ButtonProps) -> Element {
+    let app_event_handler = use_coroutine_handle::<AppEvents>();
+    rsx! {
         RawButton {
-            button_props: &cx.props,
-            on_click: |_| app_event_handler.send(AppEvents::ToggleSettingsSidebar),
+            button_props: props,
+            on_click: move |_| app_event_handler.send(AppEvents::ToggleSettingsSidebar),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 class: "h-6 w-6",

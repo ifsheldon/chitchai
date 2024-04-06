@@ -56,9 +56,9 @@ fn linearize_replies(mut replies: Vec<(AgentID, MessageID, usize)>) -> LinkedCha
 async fn post_agent_request(assistant_id: AgentID,
                             user_agent_id: AgentID,
                             chat_idx: usize,
-                            authed_client: UseSharedState<AuthedClient>,
+                            authed_client: Signal<AuthedClient>,
                             order: Arc<Mutex<usize>>,
-                            global: UseSharedState<StoredStates>) -> (AgentID, MessageID, usize) {
+                            mut global: Signal<StoredStates>) -> (AgentID, MessageID, usize) {
     let mut global_mut = global.write();
     let chat = &global_mut.chats[chat_idx];
     // get the context to send to AI
@@ -111,10 +111,10 @@ async fn post_agent_request(assistant_id: AgentID,
 
 
 pub(super) async fn handle_request(mut rx: UnboundedReceiver<Request>,
-                                   chat_id: UseSharedState<ChatId>,
-                                   global: UseSharedState<StoredStates>,
-                                   authed_client: UseSharedState<AuthedClient>,
-                                   streaming_reply: UseSharedState<StreamingReply>) {
+                                   chat_id: Signal<ChatId>,
+                                   mut global: Signal<StoredStates>,
+                                   authed_client: Signal<AuthedClient>,
+                                   mut streaming_reply: Signal<StreamingReply>) {
     while let Some(Request(request)) = rx.next().await {
         let chat_id = chat_id.read().0;
         log::info!("chat id = {}", chat_id);

@@ -23,7 +23,7 @@ pub enum LeftSidebarEvent {
     DisableSecondary(SecondarySidebar),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum SecondarySidebar {
     History,
     Profile,
@@ -36,14 +36,13 @@ impl SecondarySidebar {
     }
 }
 
-pub fn LeftSidebar(cx: Scope) -> Element {
-    use_shared_state_provider(cx, || SecondarySidebar::None);
-    let secondary_sidebar = use_shared_state::<SecondarySidebar>(cx).unwrap();
-    let showing_chat_id = use_shared_state::<ChatId>(cx).unwrap();
-    let streaming_reply = use_shared_state::<StreamingReply>(cx).unwrap();
-    let global = use_shared_state::<StoredStates>(cx).unwrap();
-    use_coroutine(cx, |rx| event_handler(rx, secondary_sidebar.to_owned(), showing_chat_id.to_owned(), streaming_reply.to_owned(), global.to_owned()));
-    render! {
+pub fn LeftSidebar() -> Element {
+    let secondary_sidebar = use_context_provider(|| Signal::new(SecondarySidebar::None));
+    let showing_chat_id = use_context::<Signal<ChatId>>();
+    let streaming_reply = use_context::<Signal<StreamingReply>>();
+    let global = use_context::<Signal<StoredStates>>();
+    use_coroutine(|rx| event_handler(rx, secondary_sidebar.to_owned(), showing_chat_id.to_owned(), streaming_reply.to_owned(), global.to_owned()));
+    rsx! {
         aside {
             class: "flex",
             IconSidebar {}
@@ -64,10 +63,10 @@ pub fn LeftSidebar(cx: Scope) -> Element {
 
 
 async fn event_handler(mut rx: UnboundedReceiver<LeftSidebarEvent>,
-                       secondary_sidebar: UseSharedState<SecondarySidebar>,
-                       showing_chat_id: UseSharedState<ChatId>,
-                       streaming_reply: UseSharedState<StreamingReply>,
-                       global: UseSharedState<StoredStates>) {
+                       mut secondary_sidebar: Signal<SecondarySidebar>,
+                       mut showing_chat_id: Signal<ChatId>,
+                       streaming_reply: Signal<StreamingReply>,
+                       mut global: Signal<StoredStates>) {
     while let Some(event) = rx.next().await {
         match event {
             LeftSidebarEvent::EnableSecondary(secondary) => {

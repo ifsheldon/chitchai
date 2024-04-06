@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
 
-pub fn AgentProfiles(cx: Scope) -> Element {
+pub fn AgentProfiles() -> Element {
     todo!()
 }

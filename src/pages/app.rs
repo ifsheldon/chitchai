@@ -9,7 +9,6 @@ use crate::utils::auth::Auth;
 use crate::utils::storage::StoredStates;
 
 
-
 // Global states
 pub type AuthedClient = Option<Client>;
 
@@ -17,12 +16,12 @@ pub struct ChatId(pub Uuid);
 
 pub struct StreamingReply(pub bool);
 
-pub fn Main(cx: Scope) -> Element {
+pub fn Main() -> Element {
     let mut stored_states = StoredStates::get_or_init();
     stored_states.run_count += 1;
     stored_states.save();
     log::info!("This is your {} time running ChitChai!", stored_states.run_count);
-    render! {
+    rsx! {
         App {
             stored_states: stored_states
         }
@@ -36,13 +35,9 @@ pub enum AppEvents {
     ToggleSettingsSidebar,
 }
 
-#[derive(Debug, Clone, Props, PartialEq)]
-pub struct AppProps {
-    pub stored_states: StoredStates,
-}
 
-pub fn App(cx: Scope<AppProps>) -> Element {
-    let stored_states = cx.props.stored_states.clone();
+#[component]
+pub fn App(stored_states: StoredStates) -> Element {
     let last_chat_id = stored_states.chats.last().unwrap().id;
     let authed_client: AuthedClient = stored_states
         .auth
@@ -56,29 +51,28 @@ pub fn App(cx: Scope<AppProps>) -> Element {
         });
     let hide_settings_sidebar = stored_states.auth.is_some() && stored_states.selected_service.is_some();
     // configure share states
-    use_shared_state_provider(cx, || stored_states);
-    use_shared_state_provider(cx, || authed_client);
-    use_shared_state_provider(cx, || ChatId(last_chat_id));
-    use_shared_state_provider(cx, || StreamingReply(false));
-    let global = use_shared_state::<StoredStates>(cx).unwrap();
-    let chat_id = use_shared_state::<ChatId>(cx).unwrap();
+    let _stored_states = use_context_provider(|| Signal::new(stored_states));
+    let _authed_client = use_context_provider(|| Signal::new(authed_client));
+    let _last_chat_id = use_context_provider(|| Signal::new(ChatId(last_chat_id)));
+    let _streaming_reply = use_context_provider(|| Signal::new(StreamingReply(false)));
+
     // configure local states
-    let hide_setting_sidebar = use_state(cx, || hide_settings_sidebar);
+    let hide_setting_sidebar = use_signal(|| hide_settings_sidebar);
     // configure event handler
-    use_coroutine(cx, |mut rx| {
-        let hide_setting_sidebar = hide_setting_sidebar.to_owned();
+    use_coroutine(|mut rx| {
+        let mut hide_setting_sidebar = hide_setting_sidebar.to_owned();
         async move {
             while let Some(event) = rx.next().await {
                 match event {
                     AppEvents::ToggleSettingsSidebar => {
-                        hide_setting_sidebar.modify(|h| !(*h));
+                        hide_setting_sidebar.with_mut(|h| *h = !(*h));
                     }
                     _ => log::warn!("Unknown event: {:?}", event),
                 }
             }
         }
     });
-    render! {
+    rsx! {
         div {
             class: "flex h-full w-full",
             LeftSidebar {}
@@ -88,7 +82,7 @@ pub fn App(cx: Scope<AppProps>) -> Element {
             }
             div {
                 class: "w-1/6",
-                hidden: *hide_setting_sidebar.get(),
+                hidden: *hide_setting_sidebar.read(),
                 SettingSidebar  {}
             }
         }
