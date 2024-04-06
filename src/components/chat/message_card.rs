@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use dioxus_markdown::Markdown;
-use transprompt::async_openai::types::Role;
+use transprompt::async_openai::types::{ChatCompletionRequestMessage, ChatCompletionRequestUserMessageContent};
 use transprompt::utils::llm::openai::ChatMsg;
 
 #[derive(Props, PartialEq, Clone, Debug)]
@@ -10,9 +10,10 @@ pub struct MessageCardProps {
 
 pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
     let chat_msg = &cx.props.chat_msg;
-    let msg = chat_msg.msg.content.as_ref().unwrap();
-    match chat_msg.msg.role {
-        Role::System => render! {
+    match &chat_msg.msg {
+        ChatCompletionRequestMessage::System(sys_msg) => {
+            let content = sys_msg.content.as_str();
+            render! {
                 div {
                     class: "flex flex-row-reverse items-start p-5",
                     img {
@@ -20,43 +21,52 @@ pub fn MessageCard(cx: Scope<MessageCardProps>) -> Element {
                         src: "https://dummyimage.com/128x128/354ea1/ffffff&text=S"
                     }
                     MarkdownTextBox {
-                        content: msg,
+                        content: content,
                     }
                 }
-            },
-        Role::User => {
-            let name = chat_msg.msg.name.as_ref();
-            let char = name.map(|name| name.chars().next().unwrap()).unwrap_or('U');
+            }
+        }
+        ChatCompletionRequestMessage::User(user_msg) => {
+            let content = match &user_msg.content {
+                ChatCompletionRequestUserMessageContent::Text(text) => text.as_str(),
+                ChatCompletionRequestUserMessageContent::Array(_) => todo!()
+            };
+            let name_char = user_msg.name.as_ref().map(|name| name.as_str().chars().next().unwrap()).unwrap_or('U');
             render! {
                 div {
                     class: "flex flex-row-reverse items-start p-5",
                     img {
                         class: "ml-2 h-8 w-8 rounded-full",
-                        src: "https://dummyimage.com/128x128/354ea1/ffffff&text={char}"
+                        src: "https://dummyimage.com/128x128/354ea1/ffffff&text={name_char}"
                     }
                     MarkdownTextBox {
-                        content: msg,
+                        content: content,
                     }
                 }
             }
         }
-        Role::Assistant => {
-            let name = chat_msg.msg.name.as_ref();
-            let char = name.map(|name| name.chars().next().unwrap()).unwrap_or('A');
+        ChatCompletionRequestMessage::Assistant(assistant_msg) => {
+            let content = assistant_msg.content
+                .as_ref()
+                .expect("Assistant message content is missing; Should not happen as of now")
+                .as_str();
+            let name_char = assistant_msg.name.as_ref()
+                .map(|name| name.as_str().chars().next().unwrap())
+                .unwrap_or('A');
             render! {
                 div {
                     class: "flex items-start p-5",
                     img {
                         class: "mr-2 h-8 w-8 rounded-full",
-                        src: "https://dummyimage.com/128x128/363536/ffffff&text={char}"
+                        src: "https://dummyimage.com/128x128/363536/ffffff&text={name_char}"
                     }
                     MarkdownTextBox {
-                        content: msg,
+                        content: content,
                     }
                 }
             }
         }
-        Role::Function => unreachable!(),
+        ChatCompletionRequestMessage::Tool(_) | ChatCompletionRequestMessage::Function(_) => todo!(),
     }
 }
 

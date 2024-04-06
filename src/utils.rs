@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use transprompt::async_openai::types::{ChatCompletionRequestMessage, Role};
+use transprompt::async_openai::types::{ChatCompletionRequestAssistantMessage, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent};
 use transprompt::utils::llm::openai::ChatMsg;
 
 use crate::agents::AgentName;
@@ -14,12 +14,11 @@ pub(crate) const EMPTY: String = String::new();
 
 pub fn sys_msg(string: impl Into<String>) -> ChatMsg {
     ChatMsg {
-        msg: ChatCompletionRequestMessage {
-            role: Role::System,
-            content: Some(string.into()),
+        msg: ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
+            content: string.into(),
+            role: Default::default(),
             name: None,
-            function_call: None,
-        },
+        }),
         metadata: None,
     }
 }
@@ -34,12 +33,13 @@ pub fn user_msg(string: impl Into<String>, name: AgentName) -> ChatMsg {
         }
     };
     ChatMsg {
-        msg: ChatCompletionRequestMessage {
-            role: Role::User,
-            content: Some(string.into()),
-            name,
-            function_call: None,
-        },
+        msg: ChatCompletionRequestMessage::User(
+            ChatCompletionRequestUserMessage {
+                content: ChatCompletionRequestUserMessageContent::Text(string.into()),
+                role: Default::default(),
+                name
+            }
+        ),
         metadata: None,
     }
 }
@@ -54,12 +54,15 @@ pub fn assistant_msg(string: impl Into<String>, name: AgentName) -> ChatMsg {
         }
     };
     ChatMsg {
-        msg: ChatCompletionRequestMessage {
-            role: Role::Assistant,
-            content: Some(string.into()),
-            name,
-            function_call: None,
-        },
+        msg: ChatCompletionRequestMessage::Assistant(
+            ChatCompletionRequestAssistantMessage{
+                content: Some(string.into()),
+                role: Default::default(),
+                name,
+                tool_calls: None,
+                function_call: None,
+            }
+        ),
         metadata: None,
     }
 }
