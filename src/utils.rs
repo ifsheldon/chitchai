@@ -9,6 +9,7 @@ pub mod storage;
 pub mod auth;
 pub mod settings;
 pub mod datetime;
+pub mod markdown;
 
 pub(crate) const EMPTY: String = String::new();
 

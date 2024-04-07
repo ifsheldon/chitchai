@@ -69,7 +69,7 @@ pub fn ChatContainer() -> Element {
 
 #[component]
 pub fn ChatMessageInput(disable_submit: bool) -> Element {
-    // FIXME: Make chat message input work again
+    // TODO: Test new code after adaptation
     const TEXTAREA_ID: &str = "chat-input";
     let stored_states = use_context::<Signal<StoredStates>>();
     let tick = use_signal(|| 0_usize);
@@ -83,41 +83,33 @@ pub fn ChatMessageInput(disable_submit: bool) -> Element {
             }
         }
     });
-    let request_sender: &Coroutine<Request> = &use_coroutine_handle();
-    // let input_value = use_signal(|| {
-    //     let empty_form = FormData {
-    //         value: String::new(),
-    //         values: Default::default(),
-    //         files: None,
-    //     };
-    //     Rc::new(empty_form)
-    // });
+    let request_sender: Coroutine<Request> = use_coroutine_handle();
+    let mut input_value = use_signal(|| String::new());
     // TODO: try not to use js to clear textarea
-    // let create_eval = use_eval(cx);
-    // let clear_textarea = use_future(cx, (), |_| {
-    //     let create_eval = create_eval.to_owned();
-    //     let clear_js = format!("document.getElementById('{}').value = '';", TEXTAREA_ID);
-    //     async move {
-    //         let result = create_eval(clear_js.as_str())
-    //             .unwrap()
-    //             .join()
-    //             .await;
-    //         match result {
-    //             Ok(_) => log::info!("clear_textarea"),
-    //             Err(e) => log::error!("clear_textarea error: {:?}", e),
-    //         }
-    //     }
-    // });
+    let js = format!("document.getElementById('{}').value = '';", TEXTAREA_ID);
+    let create_eval = eval(&js);
+    let mut clear_textarea = use_resource(move || {
+        let create_eval = create_eval.to_owned();
+        async move {
+            let result = create_eval.join().await;
+            match result {
+                Ok(_) => log::info!("clear_textarea"),
+                Err(e) => log::error!("clear_textarea error: {:?}", e),
+            }
+        }
+    });
 
     rsx! {
         form {
             class: "mt-2 absolute bottom-0 w-full p-5",
             id: "chat-form",
-            // onsubmit: move |_| {
-            //     log::info!("onsubmit {}", &input_value.get().value);
-            //     request_sender.send(Request(input_value.get().value.clone()));
-            //     clear_textarea.restart();
-            // },
+            onsubmit: move |_| {
+                let input_str = input_value.read().clone();
+                log::info!("onsubmit {}", input_str);
+                request_sender.send(Request(input_str));
+                input_value.with_mut(|input_value| input_value.clear());
+                clear_textarea.restart();
+            },
             label {
                 r#for: "{TEXTAREA_ID}",
                 class: "sr-only",
@@ -126,7 +118,14 @@ pub fn ChatMessageInput(disable_submit: bool) -> Element {
             div {
                 class: "relative",
                 textarea {
-                    // oninput: move |event| input_value.set(event.data),
+                    oninput: move |event| {
+                        let val = event.data.value();
+                        #[cfg(debug_assertions)]
+                        {
+                            log::info!("input_value: {}", val);
+                        }
+                        input_value.set(val);
+                    },
                     id: "chat-input",
                     form: "chat-form",
                     class: "block w-full resize-none rounded-xl border-none bg-slate-200 p-4 pl-10 pr-20 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-slate-900 dark:text-slate-200 dark:placeholder-slate-400 dark:focus:ring-blue-600 sm:text-base",

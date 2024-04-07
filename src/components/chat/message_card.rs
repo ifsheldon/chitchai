@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
-use dioxus_markdown::Markdown;
 use transprompt::async_openai::types::{ChatCompletionRequestMessage, ChatCompletionRequestUserMessageContent};
 use transprompt::utils::llm::openai::ChatMsg;
+use crate::utils::markdown::Markdown;
 
 
 #[component]
