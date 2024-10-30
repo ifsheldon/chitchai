@@ -1,5 +1,5 @@
 # Chitchai 聊斋
-[![website](https://badgen.net/badge/chitchai/.dev/blue)](https://chitchai.dev)
+[![website](https://badgen.net/badge/chitchai/reify.ing/blue)](https://chitchai.reify.ing)
 
 Chitchat with multiple AIs to get more insights!
 
