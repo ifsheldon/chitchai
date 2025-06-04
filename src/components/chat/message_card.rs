@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use dioxus_markdown::Markdown;
-use transprompt::async_openai::types::{ChatCompletionRequestMessage, ChatCompletionRequestUserMessageContent};
+use transprompt::async_openai_wasm::types::{ChatCompletionRequestMessage, ChatCompletionRequestUserMessageContent};
 use transprompt::utils::llm::openai::ChatMsg;
 
 #[derive(Props, PartialEq, Clone, Debug)]
@@ -75,17 +75,47 @@ pub struct MarkdownTextBoxProps<'a> {
     content: &'a str,
 }
 
+//pub fn MarkdownTextBox<'a>(cx: Scope<'a, MarkdownTextBoxProps>) -> Element<'a> {
+//    let msg = cx.props.content;
+//    render! {
+//        div {
+//            class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 px-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
+//            article {
+//                class: "prose dark:prose-invert lg:prose-xl max-w-none",
+//		content: "FIXME",
+//                    Markdown {
+///                    content: "{msg}",
+//                }
+//            }
+//        }
+//    }
+//}
+
+//use dioxus::prelude::*;
+
+//#[derive(Props, PartialEq)]
+//struct MarkdownTextBoxProps {
+//    content: String, // Adjust to &str if needed
+//}
+
 pub fn MarkdownTextBox<'a>(cx: Scope<'a, MarkdownTextBoxProps>) -> Element<'a> {
-    let msg = cx.props.content;
-    render! {
+    //let 
+    let msg = &cx.props.content;
+    cx.render(
+    rsx! {
         div {
             class: "flex min-h-[85px] rounded-b-xl rounded-tl-xl bg-slate-50 px-4 dark:bg-slate-800 sm:min-h-0 sm:max-w-md md:max-w-2xl",
-            article {
-                class: "prose dark:prose-invert lg:prose-xl max-w-none",
-                    Markdown {
-                    content: "{msg}",
-                }
+	    "TODO"
+//	    msg.to_string()
+//            article {
+//		content : msg.to_string(), // Ensure String type
+//                Markdown {
+//                     class: "prose dark:prose-invert lg:prose-xl max-w-none",
+//                     content: ,
+//		                         content: "todo" ,
+//                 }
             }
-        }
-    }
+        //}
+	      }
+    )
 }

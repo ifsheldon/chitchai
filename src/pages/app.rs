@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
-use transprompt::async_openai::Client;
-use transprompt::async_openai::config::{AzureConfig, OpenAIConfig};
+use transprompt::async_openai_wasm::Client;
+use transprompt::async_openai_wasm::config::{AzureConfig, OpenAIConfig};
 use uuid::Uuid;
 
 use crate::components::{ChatContainer, LeftSidebar, SettingSidebar};

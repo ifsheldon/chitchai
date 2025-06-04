@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use dioxus::prelude::*;
 use futures::future::join_all;
 use futures_util::StreamExt;
-use transprompt::async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs};
+use transprompt::async_openai_wasm::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs};
 use uuid::Uuid;
 
 use crate::agents::AgentID;

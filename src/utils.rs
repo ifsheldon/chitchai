@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use transprompt::async_openai::types::{ChatCompletionRequestAssistantMessage, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent};
+use transprompt::async_openai_wasm::types::{ChatCompletionRequestAssistantMessage, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent};
 use transprompt::utils::llm::openai::ChatMsg;
 
 use crate::agents::AgentName;

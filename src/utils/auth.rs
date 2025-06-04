@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use transprompt::async_openai::config::{AzureConfig, OpenAIConfig};
+use transprompt::async_openai_wasm::config::{AzureConfig, OpenAIConfig};
 
 #[non_exhaustive]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
